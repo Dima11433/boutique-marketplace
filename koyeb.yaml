@@ -1,0 +1,18 @@
+name: modeva
+services:
+  - name: modeva-web
+    type: web
+    git:
+      repository: github.com/Dima11433/boutique-marketplace
+      branch: main
+      build_command: pip install -r requirements.txt
+      run_command: uvicorn web:app --host 0.0.0.0 --port 8000
+    instance_type: nano
+    ports:
+      - port: 8000
+        path: /
+    env:
+      - key: PYTHONIOENCODING
+        value: utf-8
+      - key: BOT_API_URL
+        value: ""
