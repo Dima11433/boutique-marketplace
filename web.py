@@ -14,7 +14,11 @@ import config
 import database as db
 
 logger = logging.getLogger("web")
-BOT_API_URL = os.getenv("BOT_API_URL", "").rstrip("/")
+raw_bot_api = os.getenv("BOT_API_URL", "").strip().rstrip("/")
+if raw_bot_api and not raw_bot_api.startswith("http://") and not raw_bot_api.startswith("https://"):
+    BOT_API_URL = f"http://{raw_bot_api}"
+else:
+    BOT_API_URL = raw_bot_api
 
 try:
     from bot import notify_worker, log_to_channel, post_profit_to_channel
@@ -24,6 +28,15 @@ except Exception:
     async def post_profit_to_channel(*args, **kwargs): return True, ""
 
 app = FastAPI(title="MODEVA Marketplace")
+
+@app.on_event("startup")
+async def on_startup():
+    logger.info("Initializing database on web app startup...")
+    try:
+        await db.init_db()
+        logger.info("Database initialized successfully.")
+    except Exception as e:
+        logger.error(f"Error initializing database: {e}")
 
 # Socket.IO Real-time Server
 sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
@@ -188,7 +201,12 @@ async def get_products(category: Optional[str] = None, search: Optional[str] = N
             logger.warning(f"Error fetching catalog via BOT_API_URL: {e}")
 
     if not products:
-        products = await db.get_catalog_products(category=category, search=search, promo_code=promo)
+        try:
+            products = await db.get_catalog_products(category=category, search=search, promo_code=promo)
+        except Exception as e:
+            logger.warning(f"Error fetching catalog, initializing DB: {e}")
+            await db.init_db()
+            products = await db.get_catalog_products(category=category, search=search, promo_code=promo)
 
     discount_pct = 0
     if promo:
@@ -278,35 +296,53 @@ async def check_promo(code: str):
 
 @app.post("/api/register")
 async def api_register(data: RegisterRequest):
-    client, worker, is_new = await db.register_client(
-        name=data.name,
-        phone=data.phone,
-        email=data.email,
-        password=data.password,
-        promo_code=data.promo_code
-    )
+    try:
+        client, worker, is_new = await db.register_client(
+            name=data.name,
+            phone=data.phone,
+            email=data.email,
+            password=data.password,
+            promo_code=data.promo_code
+        )
+    except Exception as e:
+        logger.warning(f"Error in register_client, initializing database fallback: {e}")
+        try:
+            await db.init_db()
+            client, worker, is_new = await db.register_client(
+                name=data.name,
+                phone=data.phone,
+                email=data.email,
+                password=data.password,
+                promo_code=data.promo_code
+            )
+        except Exception as err2:
+            logger.error(f"Fatal registration error: {err2}")
+            raise HTTPException(status_code=400, detail="Ошибка при создании аккаунта. Пожалуйста, проверьте данные.")
 
     # If linked to a worker, send notification to worker bot!
     if worker and is_new:
-        user_mention = f"@{worker.get('username')}" if worker.get('username') else f"ID: {worker['telegram_id']}"
-        worker_notif = (
-            f"👤 <b>НОВЫЙ КЛИЕНТ ЗАКРЕПЛЕН ЗА ВАМИ!</b>\n\n"
-            f"🏷 <b>Промокод:</b> <code>{worker['promo_code']}</code>\n"
-            f"👤 <b>Имя:</b> {data.name}\n"
-            f"📱 <b>Телефон:</b> <code>{data.phone or 'не указан'}</code>\n"
-            f"✉️ <b>Email:</b> <code>{data.email or 'не указан'}</code>\n\n"
-            f"🎉 Теперь любые покупки этого клиента будут приносить вам выплату!"
-        )
-        await notify_worker(worker["telegram_id"], worker_notif)
+        try:
+            user_mention = f"@{worker.get('username')}" if worker.get('username') else f"ID: {worker['telegram_id']}"
+            worker_notif = (
+                f"👤 <b>НОВЫЙ КЛИЕНТ ЗАКРЕПЛЕН ЗА ВАМИ!</b>\n\n"
+                f"🏷 <b>Промокод:</b> <code>{worker['promo_code']}</code>\n"
+                f"👤 <b>Имя:</b> {data.name}\n"
+                f"📱 <b>Телефон:</b> <code>{data.phone or 'не указан'}</code>\n"
+                f"✉️ <b>Email:</b> <code>{data.email or 'не указан'}</code>\n\n"
+                f"🎉 Теперь любые покупки этого клиента будут приносить вам выплату!"
+            )
+            await notify_worker(worker["telegram_id"], worker_notif)
 
-        channel_log = (
-            f"👤 <b>РЕГИСТРАЦИЯ НОВОГО КЛИЕНТА</b>\n\n"
-            f"👨‍💻 <b>Воркер:</b> {user_mention}\n"
-            f"🏷 <b>Промокод:</b> <code>{worker['promo_code']}</code>\n"
-            f"👤 <b>Клиент:</b> {data.name} (📱 {data.phone or 'нет'})\n"
-            f"✉️ <b>Email:</b> {data.email or 'нет'}"
-        )
-        await log_to_channel(channel_log)
+            channel_log = (
+                f"👤 <b>РЕГИСТРАЦИЯ НОВОГО КЛИЕНТА</b>\n\n"
+                f"👨‍💻 <b>Воркер:</b> {user_mention}\n"
+                f"🏷 <b>Промокод:</b> <code>{worker['promo_code']}</code>\n"
+                f"👤 <b>Клиент:</b> {data.name} (📱 {data.phone or 'нет'})\n"
+                f"✉️ <b>Email:</b> {data.email or 'нет'}"
+            )
+            await log_to_channel(channel_log)
+        except Exception as e:
+            logger.warning(f"Error notifying worker on registration: {e}")
 
     return {"status": "ok", "client": client, "worker_linked": bool(worker)}
 

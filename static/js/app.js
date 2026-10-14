@@ -367,6 +367,13 @@ async function submitOrder(e) {
 
 async function submitRegister(e) {
     e.preventDefault();
+    const btn = e.target.querySelector("button[type=submit]");
+    const origText = btn ? btn.textContent : "Зарегистрироваться";
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Регистрация...";
+    }
+
     const name = document.getElementById("regName").value.trim();
     const phone = document.getElementById("regPhone").value.trim();
     const email = document.getElementById("regEmail").value.trim();
@@ -386,8 +393,8 @@ async function submitRegister(e) {
             })
         });
 
-        const data = await res.json();
-        if (data.status === "ok") {
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.status === "ok") {
             currentUser = data.client;
             localStorage.setItem("mirelle_user", JSON.stringify(currentUser));
             if (promo) {
@@ -396,9 +403,17 @@ async function submitRegister(e) {
             updateUserUI();
             closeModal("registerModal");
             alert(`Добро пожаловать в MODEVA, ${name}!`);
+        } else {
+            const msg = data.detail || data.message || "Ошибка регистрации. Проверьте правильность введенных данных.";
+            alert(msg);
         }
     } catch (err) {
-        alert("Ошибка регистрации");
+        alert("Ошибка связи с сервером при регистрации. Пожалуйста, попробуйте еще раз.");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = origText;
+        }
     }
 }
 

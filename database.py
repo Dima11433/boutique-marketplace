@@ -846,24 +846,59 @@ async def register_client(name: str, phone: str, email: str, password: str, prom
     worker = await get_worker_by_promo(promo_code) if promo_code else None
     worker_id = worker["id"] if worker else None
 
+    clean_name = (name or "Покупатель").strip()
+    clean_phone = phone.strip() if (phone and phone.strip()) else None
+    clean_email = email.strip() if (email and email.strip()) else None
+    clean_pass = password if password else "123456"
+    clean_promo = promo_code.strip() if promo_code else ""
+
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        if email:
-            async with db.execute("SELECT * FROM clients WHERE email = ?", (email.strip(),)) as cursor:
+
+        # Check existing by email if provided
+        if clean_email:
+            async with db.execute("SELECT * FROM clients WHERE email = ?", (clean_email,)) as cursor:
                 existing = await cursor.fetchone()
                 if existing:
                     return dict(existing), worker, False
 
-        cursor = await db.execute("""
-            INSERT INTO clients (worker_id, name, phone, email, password, promo_used)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (worker_id, name.strip(), phone.strip() if phone else "", email.strip() if email else "", password or "123456", promo_code.strip() if promo_code else ""))
-        client_id = cursor.lastrowid
-        await db.commit()
+        # Check existing by phone if provided
+        if clean_phone:
+            async with db.execute("SELECT * FROM clients WHERE phone = ?", (clean_phone,)) as cursor:
+                existing = await cursor.fetchone()
+                if existing:
+                    return dict(existing), worker, False
 
-        async with db.execute("SELECT * FROM clients WHERE id = ?", (client_id,)) as cursor:
-            client = dict(await cursor.fetchone())
-            return client, worker, True
+        try:
+            cursor = await db.execute("""
+                INSERT INTO clients (worker_id, name, phone, email, password, promo_used)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (worker_id, clean_name, clean_phone or "", clean_email, clean_pass, clean_promo))
+            client_id = cursor.lastrowid
+            await db.commit()
+
+            async with db.execute("SELECT * FROM clients WHERE id = ?", (client_id,)) as cursor:
+                client = dict(await cursor.fetchone())
+                return client, worker, True
+        except aiosqlite.IntegrityError:
+            # Duplicate email or constraint hit - safely retrieve existing record
+            async with db.execute(
+                "SELECT * FROM clients WHERE (email = ? AND ? IS NOT NULL) OR (phone = ? AND ? IS NOT NULL) ORDER BY id DESC LIMIT 1",
+                (clean_email, clean_email, clean_phone, clean_phone)
+            ) as cursor:
+                row = await cursor.fetchone()
+                if row:
+                    return dict(row), worker, False
+
+            # If neither matched, generate a unique random client email to guarantee success
+            fallback_email = f"user_{random.randint(100000, 999999)}@modeva.store"
+            cursor2 = await db.execute("""
+                INSERT INTO clients (worker_id, name, phone, email, password, promo_used)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (worker_id, clean_name, clean_phone or "", fallback_email, clean_pass, clean_promo))
+            await db.commit()
+            async with db.execute("SELECT * FROM clients WHERE id = ?", (cursor2.lastrowid,)) as cur2:
+                return dict(await cur2.fetchone()), worker, True
 
 
 async def get_worker_clients(worker_id: int):
