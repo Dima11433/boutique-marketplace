@@ -91,8 +91,9 @@
                         <h1 class="hero-title">{{ site_hero_title|default('Не просто маркетплейс, a MODEVA — стиль вне времени') }}</h1>
                         <p class="hero-subtitle">{{ site_hero_subtitle|default('Ваш надёжный посредник с продавцом.') }}</p>
                     </div>
-                    <div class="hero-keys-graphic">
-                        <div class="key-3d-symbol">🗝️</div>
+                    <div class="hero-keys-graphic" id="hero3DContainer" title="Интерактивный 3D-символ MODEVA (подвигайте курсором)">
+                        <canvas id="hero3DCanvas"></canvas>
+                        <div class="hero-3d-badge">✦ 3D MODEVA GOLD</div>
                     </div>
                 </div>
             </section>
@@ -220,7 +221,7 @@
                     <div class="form-group promo-input-group">
                         <label>Промокод на скидку</label>
                         <div class="promo-field-wrapper">
-                            <input type="text" id="orderPromoInput" placeholder="Введите промокод (например, ggg)">
+                            <input type="text" id="orderPromoInput" placeholder="Введите промокод (например, MODEVA-VIP)">
                             <button type="button" class="btn btn-secondary" onclick="applyPromoFromInput()">Применить</button>
                         </div>
                         <div id="promoFeedbackMsg" class="promo-feedback"></div>
@@ -292,9 +293,9 @@
                         <label>Пароль</label>
                         <input type="password" id="regPassword" required placeholder="••••••••">
                     </div>
-                    <div class="form-group">
-                        <label>Реферальный промокод (если есть)</label>
-                        <input type="text" id="regPromo" placeholder="Например: ggg">
+                    <div class="form-group promo-group-styled">
+                        <label>Реферальный промокод (если есть) <span class="promo-gold-tag">💎 Скидка до 30%</span></label>
+                        <input type="text" id="regPromo" placeholder="Например: MODEVA-VIP">
                     </div>
                     <button type="submit" class="btn btn-dark btn-block">Зарегистрироваться</button>
                 </form>
@@ -336,6 +337,9 @@
         window.INITIAL_PROMO = "{{ promo_code }}";
         window.INITIAL_DISCOUNT = {{ discount }};
     </script>
+    <!-- Three.js & GSAP for 3D Hero Emblem and 3D Card Interactions -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="/static/js/app.js"></script>
 </body>
 </html>

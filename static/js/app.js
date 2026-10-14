@@ -22,6 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
     updateFavoritesUI();
     updateUserUI();
     loadProducts();
+    initHero3DGem();
 
     // Close dropdowns when clicking outside
     document.addEventListener("click", (e) => {
@@ -144,6 +145,7 @@ function renderProducts(products) {
 
         return `
             <div class="product-card" onclick="openProductModal(${p.id})">
+                <div class="product-card-glare"></div>
                 <div class="product-img-box">
                     <img src="${p.image_url}" alt="${escapeHtml(p.title)}" loading="lazy">
                 </div>
@@ -166,6 +168,8 @@ function renderProducts(products) {
             </div>
         `;
     }).join("");
+
+    init3DCardTilt();
 }
 
 // --- Product Modal & Quick Buy ---
@@ -544,3 +548,192 @@ function escapeHtml(text) {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 }
+
+// --- 3D Hero Gemstone Animation (Three.js WebGL) ---
+function initHero3DGem() {
+    const canvas = document.getElementById("hero3DCanvas");
+    const container = document.getElementById("hero3DContainer");
+    if (!canvas || typeof THREE === "undefined") return;
+
+    const width = 150;
+    const height = 150;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+    camera.position.set(0, 0, 4.3);
+
+    const renderer = new THREE.WebGLRenderer({
+        canvas: canvas,
+        alpha: true,
+        antialias: true,
+        powerPreference: "high-performance"
+    });
+    renderer.setSize(width, height, false);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+    // Master 3D Group
+    const gemGroup = new THREE.Group();
+
+    // 1. Faceted Gold Octahedron Gemstone
+    const gemGeo = new THREE.OctahedronGeometry(1.25, 0);
+    const gemMat = new THREE.MeshStandardMaterial({
+        color: 0xf3d27a,
+        metalness: 0.9,
+        roughness: 0.18,
+        flatShading: true
+    });
+    const gemMesh = new THREE.Mesh(gemGeo, gemMat);
+    gemGroup.add(gemMesh);
+
+    // 2. Glowing Golden Wireframe Edges
+    const edgesGeo = new THREE.EdgesGeometry(gemGeo);
+    const edgesMat = new THREE.LineBasicMaterial({
+        color: 0xffffff,
+        linewidth: 1.5,
+        transparent: true,
+        opacity: 0.75
+    });
+    const edgeLines = new THREE.LineSegments(edgesGeo, edgesMat);
+    gemGroup.add(edgeLines);
+
+    // 3. Orbital Luxury Torus Ring
+    const ringGeo = new THREE.TorusGeometry(1.65, 0.038, 16, 64);
+    const ringMat = new THREE.MeshStandardMaterial({
+        color: 0xd4af37,
+        metalness: 0.95,
+        roughness: 0.12
+    });
+    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+    ringMesh.rotation.x = Math.PI / 3;
+    gemGroup.add(ringMesh);
+
+    scene.add(gemGroup);
+
+    // Studio Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+    scene.add(ambientLight);
+
+    const dirLight1 = new THREE.DirectionalLight(0xfff6c5, 2.2);
+    dirLight1.position.set(4, 5, 4);
+    scene.add(dirLight1);
+
+    const dirLight2 = new THREE.DirectionalLight(0xd4af37, 1.5);
+    dirLight2.position.set(-4, -2, -2);
+    scene.add(dirLight2);
+
+    const pointLight = new THREE.PointLight(0xffffff, 1.2, 10);
+    pointLight.position.set(0, 0, 3.5);
+    scene.add(pointLight);
+
+    // Interactive Parallax & Dragging
+    let mouseX = 0, mouseY = 0;
+    let targetRotX = 0, targetRotY = 0;
+    let isDragging = false;
+    let prevMouseX = 0, prevMouseY = 0;
+
+    window.addEventListener("mousemove", (e) => {
+        if (!container) return;
+        const rect = container.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        mouseX = (e.clientX - centerX) / (window.innerWidth / 2);
+        mouseY = (e.clientY - centerY) / (window.innerHeight / 2);
+        targetRotY = mouseX * 0.7;
+        targetRotX = mouseY * 0.7;
+    });
+
+    canvas.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        prevMouseX = e.clientX;
+        prevMouseY = e.clientY;
+    });
+
+    window.addEventListener("mouseup", () => { isDragging = false; });
+
+    window.addEventListener("mousemove", (e) => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - prevMouseX;
+        const deltaY = e.clientY - prevMouseY;
+        gemGroup.rotation.y += deltaX * 0.02;
+        gemGroup.rotation.x += deltaY * 0.02;
+        prevMouseX = e.clientX;
+        prevMouseY = e.clientY;
+    });
+
+    // Touch support for mobile
+    canvas.addEventListener("touchstart", (e) => {
+        if (e.touches.length === 1) {
+            isDragging = true;
+            prevMouseX = e.touches[0].clientX;
+            prevMouseY = e.touches[0].clientY;
+        }
+    }, { passive: true });
+
+    window.addEventListener("touchend", () => { isDragging = false; });
+
+    window.addEventListener("touchmove", (e) => {
+        if (!isDragging || e.touches.length !== 1) return;
+        const deltaX = e.touches[0].clientX - prevMouseX;
+        const deltaY = e.touches[0].clientY - prevMouseY;
+        gemGroup.rotation.y += deltaX * 0.02;
+        gemGroup.rotation.x += deltaY * 0.02;
+        prevMouseX = e.touches[0].clientX;
+        prevMouseY = e.touches[0].clientY;
+    }, { passive: true });
+
+    let clock = new THREE.Clock();
+
+    function animate() {
+        requestAnimationFrame(animate);
+        const elapsedTime = clock.getElapsedTime();
+
+        if (!isDragging) {
+            gemGroup.rotation.y += 0.012;
+            gemGroup.rotation.x += (targetRotX - gemGroup.rotation.x) * 0.05;
+            gemGroup.rotation.z = Math.sin(elapsedTime * 0.8) * 0.08;
+        }
+
+        ringMesh.rotation.z += 0.008;
+        gemGroup.position.y = Math.sin(elapsedTime * 1.8) * 0.07;
+
+        renderer.render(scene, camera);
+    }
+    animate();
+}
+
+// --- 3D Interactive Card Tilt & Specular Glare ---
+function init3DCardTilt() {
+    const cards = document.querySelectorAll(".product-card");
+    cards.forEach(card => {
+        const glare = card.querySelector(".product-card-glare");
+        
+        card.addEventListener("mousemove", (e) => {
+            const rect = card.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            
+            const rotateX = ((y - centerY) / centerY) * -12;
+            const rotateY = ((x - centerX) / centerX) * 12;
+
+            card.style.transform = `perspective(1000px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale3d(1.025, 1.025, 1.025)`;
+
+            if (glare) {
+                const percentX = (x / rect.width) * 100;
+                const percentY = (y / rect.height) * 100;
+                glare.style.background = `radial-gradient(circle at ${percentX}% ${percentY}%, rgba(255, 255, 255, 0.28) 0%, rgba(212, 175, 55, 0.12) 35%, rgba(255, 255, 255, 0) 70%)`;
+                glare.style.opacity = "1";
+            }
+        });
+
+        card.addEventListener("mouseleave", () => {
+            card.style.transform = "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)";
+            if (glare) {
+                glare.style.opacity = "0";
+            }
+        });
+    });
+}
+
