@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boutique Mirelle — Ключ к премиальному шоппингу</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="icon" type="image/png" href="/static/images/p1_briefcase.png">
+</head>
+<body>
+
+    <!-- Broadcast Notification (if sent by worker) -->
+    {% if broadcast_message %}
+    <div class="worker-broadcast-banner" id="broadcastBanner">
+        <div class="broadcast-content">
+            <span class="broadcast-icon">📢</span>
+            <span class="broadcast-text">{{ broadcast_message }}</span>
+            <button class="broadcast-close" onclick="closeBroadcast()">&times;</button>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Promo code active banner -->
+    <div id="promoNoticeBar" class="promo-notice-bar" style="display: none;">
+        <div class="container promo-notice-content">
+            <span>✨ Активирован промокод <strong id="activePromoCode"></strong> — персональная скидка <strong id="activeDiscountVal">0%</strong> на весь каталог!</span>
+            <button class="promo-clear-btn" onclick="clearPromo()">Отменить</button>
+        </div>
+    </div>
+
+    <!-- Header Navigation -->
+    <header class="site-header">
+        <div class="container header-container">
+            <a href="/" class="brand-logo">Boutique Mirelle</a>
+            
+            <div class="header-actions">
+                <button class="icon-btn" onclick="openFavorites()" title="Избранное">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                    </svg>
+                    <span class="badge" id="favCount">0</span>
+                </button>
+
+                <button class="icon-btn" onclick="openCartModal()" title="Корзина">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <path d="M16 10a4 4 0 0 1-8 0"></path>
+                    </svg>
+                    <span class="badge" id="cartCount">0</span>
+                </button>
+
+                <div id="authButtons" class="auth-buttons">
+                    <button class="btn btn-light" onclick="openModal('loginModal')">Войти</button>
+                    <button class="btn btn-dark" onclick="openModal('registerModal')">Создать аккаунт</button>
+                </div>
+
+                <div id="userProfile" class="user-profile" style="display: none;">
+                    <span class="user-greeting" id="userGreeting">Клиент</span>
+                    <button class="btn btn-outline-sm" onclick="logoutUser()">Выйти</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container">
+            <!-- Hero Banner matching Screenshot 1 -->
+            <section class="hero-section">
+                <div class="hero-banner">
+                    <div class="hero-text">
+                        <h1 class="hero-title">Не маркетплейс, a Boutique Mirelle — ключ к шоппингу</h1>
+                        <p class="hero-subtitle">Ваш надёжный посредник с продавцом.</p>
+                    </div>
+                    <div class="hero-keys-graphic">
+                        <div class="key-3d-symbol">🗝️</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Search and Controls Bar matching Screenshot 1 -->
+            <section class="controls-section">
+                <div class="controls-bar">
+                    <div class="categories-dropdown-wrapper">
+                        <button class="btn-control btn-categories" onclick="toggleCategoriesMenu()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="3" y1="12" x2="21" y2="12"></line>
+                                <line x1="3" y1="6" x2="21" y2="6"></line>
+                                <line x1="3" y1="18" x2="21" y2="18"></line>
+                            </svg>
+                            <span id="selectedCategoryLabel">Категории</span>
+                        </button>
+                        <div class="dropdown-menu" id="categoriesMenu">
+                            <a href="#" onclick="selectCategory('Все')">Все товары</a>
+                            <a href="#" onclick="selectCategory('Сумки')">Сумки и багаж</a>
+                            <a href="#" onclick="selectCategory('Одежда')">Одежда</a>
+                            <a href="#" onclick="selectCategory('Обувь')">Обувь</a>
+                            <a href="#" onclick="selectCategory('Аксессуары')">Аксессуары</a>
+                        </div>
+                    </div>
+
+                    <div class="sort-dropdown-wrapper">
+                        <button class="btn-control btn-sort" onclick="toggleSortMenu()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="7 15 12 20 17 15"></polyline>
+                                <polyline points="7 9 12 4 17 9"></polyline>
+                            </svg>
+                            <span id="selectedSortLabel">Популярное</span>
+                        </button>
+                        <div class="dropdown-menu" id="sortMenu">
+                            <a href="#" onclick="selectSort('popular')">Популярное</a>
+                            <a href="#" onclick="selectSort('price_asc')">Сначала дешевле</a>
+                            <a href="#" onclick="selectSort('price_desc')">Сначала дороже</a>
+                        </div>
+                    </div>
+
+                    <div class="search-wrapper">
+                        <input type="text" id="searchInput" placeholder="Поиск товаров" oninput="onSearchInput(this.value)">
+                        <button class="btn-search" onclick="triggerSearch()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recommended Products Section -->
+            <section class="products-section">
+                <div class="section-header">
+                    <h2 class="section-title">Рекомендованные товары</h2>
+                    <div class="active-category-pill" id="currentCategoryPill" style="display: none;"></div>
+                </div>
+
+                <div class="products-grid" id="productsGrid">
+                    <div class="loading-spinner">Загрузка каталога...</div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="container footer-container">
+            <div class="footer-col">
+                <span class="footer-logo">Boutique Mirelle</span>
+                <p>Премиальный консьерж-сервис оригинальных брендовых вещей. 100% аутентификация каждого лота.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Покупателям</h4>
+                <a href="#how-it-works">Как работает сервис</a>
+                <a href="#guarantee">Гарантия подлинности</a>
+                <a href="#delivery">Доставка и оплата</a>
+            </div>
+            <div class="footer-col">
+                <h4>Контакты</h4>
+                <p>Клиентская поддержка: {{ support_username|default('@kristiq_q') }}</p>
+                <p>Ежедневно с 10:00 до 22:00</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 Boutique Mirelle. Все права защищены. Сервис безопасных сделок.</p>
+        </div>
+    </footer>
+
+    <!-- MODAL: Product Details & Quick Buy -->
+    <div class="modal" id="productModal">
+        <div class="modal-dialog">
+            <button class="modal-close" onclick="closeModal('productModal')">&times;</button>
+            <div class="modal-body product-modal-layout" id="productModalContent">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Checkout / Order Confirmation -->
+    <div class="modal" id="checkoutModal">
+        <div class="modal-dialog checkout-dialog">
+            <button class="modal-close" onclick="closeModal('checkoutModal')">&times;</button>
+            <div class="modal-body">
+                <h3 class="modal-title">Оформление заказа</h3>
+                <div class="order-summary-box" id="orderSummaryBox">
+                    <!-- Populated dynamically -->
+                </div>
+
+                <form id="orderForm" onsubmit="submitOrder(event)">
+                    <div class="form-group">
+                        <label>Ваше имя и фамилия</label>
+                        <input type="text" id="orderClientName" required placeholder="Анна Смирнова">
+                    </div>
+                    <div class="form-group">
+                        <label>Номер телефона для связи</label>
+                        <input type="tel" id="orderClientPhone" required placeholder="+7 (999) 000-00-00">
+                    </div>
+                    <div class="form-group">
+                        <label>Адрес доставки (курьером CDEK / СДЭК)</label>
+                        <input type="text" id="orderClientAddress" required placeholder="г. Москва, ул. Тверская 12, кв. 45">
+                    </div>
+
+                    <div class="form-group promo-input-group">
+                        <label>Промокод на скидку</label>
+                        <div class="promo-field-wrapper">
+                            <input type="text" id="orderPromoInput" placeholder="Введите промокод (например, ggg)">
+                            <button type="button" class="btn btn-secondary" onclick="applyPromoFromInput()">Применить</button>
+                        </div>
+                        <div id="promoFeedbackMsg" class="promo-feedback"></div>
+                    </div>
+
+                    <div class="order-pricing-breakdown">
+                        <div class="pricing-row">
+                            <span>Стоимость товара:</span>
+                            <span id="orderOrigPriceText">0 ₽</span>
+                        </div>
+                        <div class="pricing-row discount-row" id="orderDiscountRow" style="display: none;">
+                            <span>Скидка по промокоду (<span id="orderDiscountPercentText">0%</span>):</span>
+                            <span id="orderDiscountAmountText" class="discount-val">-0 ₽</span>
+                        </div>
+                        <div class="pricing-row total-row">
+                            <span>Итого к оплате:</span>
+                            <strong id="orderFinalPriceText">0 ₽</strong>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-dark btn-block btn-pay">Оплатить заказ</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Order Success Receipt -->
+    <div class="modal" id="successModal">
+        <div class="modal-dialog">
+            <button class="modal-close" onclick="closeModal('successModal')">&times;</button>
+            <div class="modal-body text-center">
+                <div class="success-icon">✓</div>
+                <h3 class="modal-title">Заказ успешно оформлен!</h3>
+                <p class="success-subtitle">Номер вашего заказа: <strong id="successOrderNum">BM-XXXXXX</strong></p>
+                <div class="success-details-card">
+                    <p>Менеджер бутика уже приступил к оформлению доставки.</p>
+                    <p>Трек-номер курьерской службы будет отправлен по SMS на указанный номер.</p>
+                </div>
+                <button class="btn btn-dark" onclick="closeModal('successModal')">Продолжить покупки</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Register -->
+    <div class="modal" id="registerModal">
+        <div class="modal-dialog">
+            <button class="modal-close" onclick="closeModal('registerModal')">&times;</button>
+            <div class="modal-body">
+                <h3 class="modal-title">Создать аккаунт</h3>
+                <p class="modal-subtitle">Получите доступ к закрытым коллекциям и истории покупок</p>
+                <form id="registerForm" onsubmit="submitRegister(event)">
+                    <div class="form-group">
+                        <label>Имя</label>
+                        <input type="text" id="regName" required placeholder="Ваше имя">
+                    </div>
+                    <div class="form-group">
+                        <label>Номер телефона</label>
+                        <input type="tel" id="regPhone" required placeholder="+7 (999) 000-00-00">
+                    </div>
+                    <div class="form-group">
+                        <label>Электронная почта</label>
+                        <input type="email" id="regEmail" placeholder="example@mail.ru">
+                    </div>
+                    <div class="form-group">
+                        <label>Пароль</label>
+                        <input type="password" id="regPassword" required placeholder="••••••••">
+                    </div>
+                    <div class="form-group">
+                        <label>Реферальный промокод (если есть)</label>
+                        <input type="text" id="regPromo" placeholder="Например: ggg">
+                    </div>
+                    <button type="submit" class="btn btn-dark btn-block">Зарегистрироваться</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Login -->
+    <div class="modal" id="loginModal">
+        <div class="modal-dialog">
+            <button class="modal-close" onclick="closeModal('loginModal')">&times;</button>
+            <div class="modal-body">
+                <h3 class="modal-title">Вход в личный кабинет</h3>
+                <form onsubmit="submitLogin(event)">
+                    <div class="form-group">
+                        <label>Телефон или Email</label>
+                        <input type="text" id="loginInput" required placeholder="+7 (999) 000-00-00">
+                    </div>
+                    <div class="form-group">
+                        <label>Пароль</label>
+                        <input type="password" required placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="btn btn-dark btn-block">Войти</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Initial Context for JS -->
+    <script>
+        window.INITIAL_PROMO = "{{ promo_code }}";
+        window.INITIAL_DISCOUNT = {{ discount }};
+    </script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
