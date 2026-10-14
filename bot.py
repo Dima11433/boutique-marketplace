@@ -359,7 +359,7 @@ async def post_profit_to_channel(worker_name: str, profit_rub: float, total_orde
         f"💸 <b>НОВЫЙ ПРОФИТ!</b>\n\n"
         f"👤 <b>Воркер:</b> {clean_name}\n"
         f"💰 <b>Сумма профита:</b> <b>{profit_rub:,.0f} ₽</b> (~{profit_usd}$)\n"
-        f"🛍 <b>Сервис:</b> Boutique Mirelle"
+        f"🛍 <b>Сервис:</b> MODEVA"
     )
 
     try:
@@ -410,7 +410,7 @@ async def cmd_start(message: Message, state: FSMContext):
         inline_keyboard=[[InlineKeyboardButton(text="📝 Заполнить заявку", callback_data="start_application")]]
     )
     await message.answer(
-        "👋 <b>Добро пожаловать в закрытую команду Boutique Mirelle!</b>\n\n"
+        "👋 <b>Добро пожаловать в закрытую команду MODEVA!</b>\n\n"
         "Чтобы получить доступ к платформе, заполните короткую анкету.",
         parse_mode=ParseMode.HTML,
         reply_markup=kb
@@ -1905,7 +1905,7 @@ async def cb_admin_profit_channel_menu(callback: CallbackQuery):
         "Формат публикации профита:\n"
         "• Ник воркера (<b>строго без @</b>)\n"
         "• Сумма профита воркера (в ₽ и $)\n"
-        "• Название сервиса: Boutique Mirelle\n\n"
+        "• Название сервиса: MODEVA\n\n"
         "ℹ️ <i>Бот обязательно должен быть добавлен администратором в данный канал с правом публикации сообщений!</i>"
     )
 
@@ -1929,7 +1929,7 @@ async def cb_admin_set_profit_channel(callback: CallbackQuery, state: FSMContext
         "📢 <b>Укажите ID или юзернейм канала для выкладки профитов:</b>\n\n"
         "Примеры:\n"
         "• Числовой ID: <code>-1004495225020</code>\n"
-        "• Публичный юзернейм: <code>@mirelle_profits</code>\n\n"
+        "• Публичный юзернейм: <code>@modeva_profits</code>\n\n"
         "⚠️ <i>Не забудьте добавить бота @nexuss_team_bot в канал как администратора!</i>",
         parse_mode=ParseMode.HTML,
         reply_markup=kb
@@ -2006,7 +2006,7 @@ async def handle_health(request: web.Request):
     return web.json_response({
         "status": "ok",
         "bot": "@nexuss_team_bot",
-        "service": "Boutique Mirelle CRM"
+        "service": "MODEVA CRM"
     })
 
 async def handle_internal_promo(request: web.Request):
@@ -2048,7 +2048,7 @@ async def handle_internal_order(request: web.Request):
     client, _, _ = await db.register_client(
         name=client_name,
         phone=client_phone,
-        email=f"client_{client_phone}@mirelle.store",
+        email=f"client_{client_phone}@modeva.store",
         password="auto",
         promo_code=promo_code
     )

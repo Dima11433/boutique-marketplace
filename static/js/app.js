@@ -198,7 +198,7 @@ async function openProductModal(productId) {
                 </div>
 
                 <p style="font-size: 13px; color: #52525b; line-height: 1.5; margin-bottom: 20px;">
-                    ${escapeHtml(product.description || 'Эксклюзивный лот премиального качества. Товар прошёл полную аутентификацию экспертами Boutique Mirelle.')}
+                    ${escapeHtml(product.description || 'Эксклюзивный лот премиального качества. Товар прошёл полную аутентификацию экспертами MODEVA.')}
                 </p>
             </div>
 
@@ -387,7 +387,7 @@ async function submitRegister(e) {
             }
             updateUserUI();
             closeModal("registerModal");
-            alert(`Добро пожаловать в Boutique Mirelle, ${name}!`);
+            alert(`Добро пожаловать в MODEVA, ${name}!`);
         }
     } catch (err) {
         alert("Ошибка регистрации");

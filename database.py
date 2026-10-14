@@ -25,7 +25,7 @@ async def init_db():
             action_logs INTEGER DEFAULT 1,
             collateral_required INTEGER DEFAULT 0,
             deposit_via_support INTEGER DEFAULT 0,
-            chat_alias TEXT DEFAULT 'Менеджер Mirelle',
+            chat_alias TEXT DEFAULT 'Менеджер MODEVA',
             balance REAL DEFAULT 0.0,
             frozen_balance REAL DEFAULT 0.0,
             trc20_wallet TEXT DEFAULT '',
@@ -296,7 +296,7 @@ async def seed_default_products():
                 "Сумки",
                 380000.0,
                 "/static/images/p6_handbag.png",
-                "Черная стеганая кожа ягненка, фурнитура с 24-каратным золотым напылением. Аутентифицирована экспертами Mirelle.",
+                "Черная стеганая кожа ягненка, фурнитура с 24-каратным золотым напылением. Аутентифицирована экспертами MODEVA.",
                 "Идеальное"
             ),
             (
@@ -792,7 +792,7 @@ async def approve_application(app_id: int):
         await db.commit()
 
     clean_user = "".join(c for c in (app_dict.get("username") or "worker") if c.isalnum()).lower()
-    promo = f"{clean_user}_{random.randint(100, 999)}" if clean_user else f"mirelle_{random.randint(100, 999)}"
+    promo = f"{clean_user}_{random.randint(100, 999)}" if clean_user else f"modeva_{random.randint(100, 999)}"
     worker = await create_worker(
         telegram_id=app_dict["telegram_id"],
         username=app_dict.get("username") or "",

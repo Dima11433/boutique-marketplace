@@ -54,7 +54,7 @@
 1. В Render снова нажмите **«New +»** ➔ **«Web Service»**.
 2. Выберите тот же репозиторий.
 3. Укажите параметры:
-   - **Name:** `boutique-mirelle`
+   - **Name:** `modeva` (или `modeva-store`)
    - **Runtime:** `Python 3`
    - **Build Command:** `pip install -r requirements.txt`
    - **Start Command:** `uvicorn web:app --host 0.0.0.0 --port $PORT`
@@ -63,7 +63,7 @@
    - `PYTHONIOENCODING` = `utf-8`
    - `BOT_API_URL` = `https://boutique-worker-bot.onrender.com` *(ссылка на вашего бота из Части 1)*
 5. Нажмите **«Deploy Web Service»**.
-6. Сайт заработает по отдельному красивому адресу: `https://boutique-mirelle.onrender.com`.
+6. Сайт заработает по отдельному красивому адресу: `https://modeva.onrender.com`.
 
 ---
 
@@ -71,18 +71,19 @@
 1. Зарегистрируйтесь на [koyeb.com](https://www.koyeb.com).
 2. Нажмите **«Create Service»** ➔ **«GitHub»** ➔ выберите репозиторий.
 3. Параметры:
+   - **App name:** `modeva`
    - **Builder:** `Buildpack`
    - **Build Command:** `pip install -r requirements.txt`
    - **Run Command:** `uvicorn web:app --host 0.0.0.0 --port 8000`
 4. В Environment variables добавьте:
    - `BOT_API_URL` = `https://boutique-worker-bot.onrender.com`
 5. Нажмите **«Deploy»**.
-6. Сайт получит адрес вида `https://<ваше-имя>.koyeb.app`, который работает круглосуточно и без сна!
+6. Сайт получит красивый брендовый адрес: `https://modeva.koyeb.app`!
 
 ---
 
 ## 🔗 Как они взаимодействуют между собой?
-1. Покупатель заходит на сайт (`boutique-mirelle...`).
+1. Покупатель заходит на сайт (`modeva.koyeb.app` или `modeva.onrender.com`).
 2. При вводе промокода сайт отправляет скрытый запрос боту на `BOT_API_URL/api/internal/promo`.
 3. При оформлении заказа сайт отправляет данные на `BOT_API_URL/api/internal/order`.
 4. Бот на Render:

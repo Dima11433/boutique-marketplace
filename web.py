@@ -21,7 +21,7 @@ except Exception:
     async def log_to_channel(*args, **kwargs): pass
     async def post_profit_to_channel(*args, **kwargs): return True, ""
 
-app = FastAPI(title="Boutique Mirelle Marketplace")
+app = FastAPI(title="MODEVA Marketplace")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
@@ -231,7 +231,7 @@ async def api_create_order(data: OrderRequest):
     client, _, _ = await db.register_client(
         name=data.client_name,
         phone=data.client_phone,
-        email=f"client_{data.client_phone}@mirelle.store",
+        email=f"client_{data.client_phone}@modeva.store",
         password="auto",
         promo_code=data.promo_code
     )

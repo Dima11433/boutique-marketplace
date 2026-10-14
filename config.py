@@ -9,11 +9,11 @@ DEFAULT_CHAT_URL = "https://t.me/+NJRGOHnueMhjMDFh"
 DEFAULT_PROFITS_URL = "https://t.me/+NJRGOHnueMhjMDFh"
 DEFAULT_SHOPS_TEXT = (
     "🌐 <b>Наши официальные магазины и ресурсы:</b>\n\n"
-    "1. <b>Boutique Mirelle</b> (Премиум одежда и аксессуары)\n"
-    "└ Домен 1: https://boutiquemirelle.com/\n"
-    "└ Домен 2: https://boutique-mirelle.com/\n\n"
-    "2. <b>Mirelle Jewelry</b> (Ювелирные изделия и часы)\n"
-    "└ Ссылка: https://boutique-mirelle.com/jewelry\n\n"
+    "1. <b>MODEVA</b> (Премиум одежда и аксессуары)\n"
+    "└ Домен 1: https://modeva.koyeb.app/\n"
+    "└ Домен 2: https://modeva.onrender.com/\n\n"
+    "2. <b>MODEVA Jewelry</b> (Ювелирные изделия и часы)\n"
+    "└ Ссылка: https://modeva.koyeb.app/jewelry\n\n"
     "3. <b>Поддержка покупателей:</b> @kristiq_q"
 )
 
@@ -21,12 +21,12 @@ USD_RUB_RATE = 95.0  # 1$ = 95 RUB
 MIN_WITHDRAWAL_USD = 20.0  # Вывод от 20$
 
 DOMAINS = [
-    "https://boutiquemirelle.com/",
-    "https://boutique-mirelle.com/"
+    "https://modeva.koyeb.app/",
+    "https://modeva.onrender.com/"
 ]
 
 SUPPORT_USERNAME = "@kristiq_q"
-MANUAL_URL = "https://telegra.ph/Manual-Marketplace-Boutique-Mirelle-01-01"
+MANUAL_URL = "https://telegra.ph/Manual-Marketplace-MODEVA-01-01"
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "marketplace.db")
 SERVER_HOST = "0.0.0.0"
