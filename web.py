@@ -65,13 +65,40 @@ async def home_page(request: Request, ref: Optional[str] = None, promo: Optional
     discount = 0
     broadcast_msg = None
 
+    # Load dynamic site settings (support, site name, hero texts)
+    settings = {}
+    if BOT_API_URL:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                res = await client.get(f"{BOT_API_URL}/api/internal/settings")
+                if res.status_code == 200:
+                    settings = res.json()
+        except Exception:
+            pass
+    if not settings:
+        settings = await db.get_site_settings()
+
+    support_username = settings.get("support_username", config.SUPPORT_USERNAME)
+    site_name = settings.get("site_name", "MODEVA")
+    site_hero_title = settings.get("site_hero_title", "Не просто маркетплейс, a MODEVA — стиль вне времени")
+    site_hero_subtitle = settings.get("site_hero_subtitle", "Ваш надёжный посредник с продавцом.")
+
     if active_promo:
-        worker = await db.get_worker_by_promo(active_promo)
-        if worker:
-            discount = worker.get("discount_percent", 0)
-            latest_bc = await db.get_latest_broadcast_for_promo(active_promo)
-            if latest_bc:
-                broadcast_msg = latest_bc["message"]
+        if BOT_API_URL:
+            try:
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    res = await client.get(f"{BOT_API_URL}/api/internal/promo", params={"code": active_promo})
+                    if res.status_code == 200 and res.json().get("valid"):
+                        discount = res.json().get("discount_percent", 0)
+            except Exception:
+                pass
+        else:
+            worker = await db.get_worker_by_promo(active_promo)
+            if worker:
+                discount = worker.get("discount_percent", 0)
+                latest_bc = await db.get_latest_broadcast_for_promo(active_promo)
+                if latest_bc:
+                    broadcast_msg = latest_bc["message"]
 
     return templates.TemplateResponse(
         request=request,
@@ -80,16 +107,47 @@ async def home_page(request: Request, ref: Optional[str] = None, promo: Optional
             "promo_code": active_promo,
             "worker": worker,
             "discount": discount,
-            "broadcast_message": broadcast_msg
+            "broadcast_message": broadcast_msg,
+            "support_username": support_username,
+            "site_name": site_name,
+            "site_hero_title": site_hero_title,
+            "site_hero_subtitle": site_hero_subtitle
         }
     )
 
 
 @app.get("/api/products")
 async def get_products(category: Optional[str] = None, search: Optional[str] = None, promo: Optional[str] = None):
-    products = await db.get_catalog_products(category=category, search=search, promo_code=promo)
-    worker = await db.get_worker_by_promo(promo) if promo else None
-    discount_pct = worker.get("discount_percent", 0) if worker else 0
+    products = []
+    if BOT_API_URL:
+        try:
+            params = {}
+            if category: params["category"] = category
+            if search: params["search"] = search
+            if promo: params["promo_code"] = promo
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                res = await client.get(f"{BOT_API_URL}/api/internal/catalog", params=params)
+                if res.status_code == 200:
+                    products = res.json().get("products", [])
+        except Exception as e:
+            logger.warning(f"Error fetching catalog via BOT_API_URL: {e}")
+
+    if not products:
+        products = await db.get_catalog_products(category=category, search=search, promo_code=promo)
+
+    discount_pct = 0
+    if promo:
+        if BOT_API_URL:
+            try:
+                async with httpx.AsyncClient(timeout=4.0) as client:
+                    res = await client.get(f"{BOT_API_URL}/api/internal/promo", params={"code": promo})
+                    if res.status_code == 200 and res.json().get("valid"):
+                        discount_pct = res.json().get("discount_percent", 0)
+            except Exception:
+                pass
+        else:
+            worker = await db.get_worker_by_promo(promo)
+            discount_pct = worker.get("discount_percent", 0) if worker else 0
 
     results = []
     for p in products:

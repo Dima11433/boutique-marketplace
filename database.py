@@ -228,7 +228,12 @@ async def init_db():
             "shops_text": config.DEFAULT_SHOPS_TEXT,
             "manual_url": config.MANUAL_URL,
             "use_unified_banner": "0",
-            "profits_channel_id": ""
+            "profits_channel_id": "",
+            "support_username": config.SUPPORT_USERNAME,
+            "site_name": "MODEVA",
+            "site_hero_title": "Не просто маркетплейс, a MODEVA — стиль вне времени",
+            "site_hero_subtitle": "Ваш надёжный посредник с продавцом.",
+            "site_domain": config.DOMAINS[0]
         }
         for k, v in default_settings.items():
             await db.execute("""
@@ -1019,3 +1024,58 @@ async def get_product_by_id(product_id: int):
         async with db.execute("SELECT * FROM products WHERE id = ?", (product_id,)) as cursor:
             row = await cursor.fetchone()
             return dict(row) if row else None
+
+
+async def add_store_product(title: str, category: str, price: float, image_url: str, description: str, condition: str = "Новое с биркой"):
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute("""
+            INSERT INTO products (worker_id, title, category, price, image_url, description, condition, is_featured)
+            VALUES (NULL, ?, ?, ?, ?, ?, ?, 1)
+        """, (title.strip(), category.strip(), price, image_url.strip(), description.strip(), condition.strip()))
+        pid = cursor.lastrowid
+        await db.commit()
+        async with db.execute("SELECT * FROM products WHERE id = ?", (pid,)) as cursor:
+            return dict(await cursor.fetchone())
+
+
+async def delete_product(product_id: int) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute("DELETE FROM products WHERE id = ?", (product_id,))
+        await db.commit()
+        return cursor.rowcount > 0
+
+
+async def update_product_price(product_id: int, new_price: float) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute("UPDATE products SET price = ? WHERE id = ?", (new_price, product_id))
+        await db.commit()
+        return cursor.rowcount > 0
+
+
+async def get_all_store_products():
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT * FROM products WHERE worker_id IS NULL ORDER BY id DESC") as cursor:
+            rows = await cursor.fetchall()
+            return [dict(r) for r in rows]
+
+
+async def get_site_settings() -> dict:
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT key, value FROM bot_settings") as cursor:
+            rows = await cursor.fetchall()
+            settings = {r[0]: r[1] for r in rows}
+    
+    return {
+        "support_username": settings.get("support_username", config.SUPPORT_USERNAME),
+        "site_name": settings.get("site_name", "MODEVA"),
+        "site_hero_title": settings.get("site_hero_title", "Не просто маркетплейс, a MODEVA — стиль вне времени"),
+        "site_hero_subtitle": settings.get("site_hero_subtitle", "Ваш надёжный посредник с продавцом."),
+        "site_domain": settings.get("site_domain", config.DOMAINS[0]),
+        "chat_url": settings.get("chat_url", config.DEFAULT_CHAT_URL),
+        "profits_url": settings.get("profits_url", config.DEFAULT_PROFITS_URL),
+        "shops_text": settings.get("shops_text", config.DEFAULT_SHOPS_TEXT),
+        "manual_url": settings.get("manual_url", config.MANUAL_URL),
+        "profits_channel_id": settings.get("profits_channel_id", "")
+    }

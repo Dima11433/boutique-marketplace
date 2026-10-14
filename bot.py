@@ -1,6 +1,7 @@
 import os
 import asyncio
 import logging
+import uuid
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandStart
@@ -25,7 +26,11 @@ logger = logging.getLogger(__name__)
 bot = Bot(token=config.BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
-STATIC_DIR = os.path.join(os.path.dirname(__file__), "static", "images")
+BASE_STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+STATIC_DIR = os.path.join(BASE_STATIC_DIR, "images")
+UPLOADS_DIR = os.path.join(STATIC_DIR, "uploads")
+os.makedirs(UPLOADS_DIR, exist_ok=True)
+
 BOT_BANNER = os.path.join(STATIC_DIR, "bot_banner.png")
 MENU_BANNER = os.path.join(STATIC_DIR, "menu_banner.png")
 HELP_BANNER = os.path.join(STATIC_DIR, "help_banner.png")
@@ -106,6 +111,33 @@ class AdminBannerState(StatesGroup):
 
 class AdminProfitChannelState(StatesGroup):
     waiting_for_channel_id = State()
+
+
+class AdminStoreProductState(StatesGroup):
+    waiting_for_title = State()
+    waiting_for_category = State()
+    waiting_for_price = State()
+    waiting_for_condition = State()
+    waiting_for_photo = State()
+    waiting_for_description = State()
+
+
+class AdminEditProductPriceState(StatesGroup):
+    waiting_for_price = State()
+
+
+class AdminSupportState(StatesGroup):
+    waiting_for_username = State()
+
+
+class AdminSiteBrandingState(StatesGroup):
+    waiting_for_name = State()
+    waiting_for_hero_title = State()
+    waiting_for_hero_subtitle = State()
+
+
+class AdminDomainState(StatesGroup):
+    waiting_for_domain = State()
 
 
 # --- Keyboards ---
@@ -1531,6 +1563,7 @@ async def msg_admin_panel(message: Message):
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="🖼 Управление баннерами (Фото/Видео/GIF)", callback_data="admin_banners_menu")],
+            [InlineKeyboardButton(text="🌐 Управление сайтом MODEVA (Товары, ТП, Домен)", callback_data="admin_site_manage_menu")],
             [InlineKeyboardButton(text="👥 Управление персоналом (Роли)", callback_data="admin_roles_menu")],
             [InlineKeyboardButton(text="🔗 Настройки ссылок (Чат, Профиты, Магазины)", callback_data="admin_links_menu")],
             [InlineKeyboardButton(text="📢 Канал выкладки профитов", callback_data="admin_profit_channel_menu")],
@@ -1882,10 +1915,802 @@ async def p_admin_bc(message: Message, state: FSMContext):
 
 
 @dp.callback_query(F.data == "admin_back_main")
-async def cb_admin_back_main(callback: CallbackQuery):
-    await callback.message.delete()
-    await msg_admin_panel(callback.message)
+async def cb_admin_back_main(callback: CallbackQuery, state: FSMContext = None):
+    if state:
+        await state.clear()
+    worker = await db.get_worker_by_tg(callback.from_user.id)
+    if not is_admin(callback.from_user.id, worker):
+        await callback.answer("Доступ запрещен.", show_alert=True)
+        return
+
+    stats = await db.get_admin_dashboard_stats()
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🖼 Управление баннерами (Фото/Видео/GIF)", callback_data="admin_banners_menu")],
+            [InlineKeyboardButton(text="🌐 Управление сайтом MODEVA (Товары, ТП, Домен)", callback_data="admin_site_manage_menu")],
+            [InlineKeyboardButton(text="👥 Управление персоналом (Роли)", callback_data="admin_roles_menu")],
+            [InlineKeyboardButton(text="🔗 Настройки ссылок (Чат, Профиты, Магазины)", callback_data="admin_links_menu")],
+            [InlineKeyboardButton(text="📢 Канал выкладки профитов", callback_data="admin_profit_channel_menu")],
+            [InlineKeyboardButton(text=f"💸 Заявки на вывод ({stats['pending_withdrawals']})", callback_data="admin_withdrawals_menu")],
+            [InlineKeyboardButton(text="📢 Рассылка воркерам", callback_data="admin_broadcast_menu")]
+        ]
+    )
+    text = (
+        f"👑 <b>Панель Администратора</b>\n\n"
+        f"👥 Всего воркеров: <b>{stats['total_workers']}</b>\n"
+        f"🛍 Клиентов на сайте: <b>{stats['total_clients']}</b>\n"
+        f"📦 Оформлено заказов: <b>{stats['total_orders']}</b>\n"
+        f"💰 Оборот магазина: <b>{stats['total_volume']:,.0f} ₽</b>\n"
+        f"💸 Заявок на вывод: <b>{stats['pending_withdrawals']}</b>"
+    )
+    try:
+        await callback.message.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=kb)
+    except Exception:
+        await callback.message.answer(text, parse_mode=ParseMode.HTML, reply_markup=kb)
     await callback.answer()
+
+
+# --- 🌐 ПОЛНОЕ УПРАВЛЕНИЕ САЙТОМ MODEVA (ТОВАРЫ, ТЕХПОДДЕРЖКА, БРЕНД, ДОМЕН) ---
+
+@dp.callback_query(F.data == "admin_site_manage_menu")
+async def cb_admin_site_manage_menu(callback: CallbackQuery, state: FSMContext = None):
+    if state:
+        await state.clear()
+    settings = await db.get_site_settings()
+    products = await db.get_all_store_products()
+
+    support_username = settings.get("support_username", config.SUPPORT_USERNAME)
+    site_name = settings.get("site_name", "MODEVA")
+    site_hero_title = settings.get("site_hero_title", "Не просто маркетплейс, a MODEVA — стиль вне времени")
+    site_domain = settings.get("site_domain", config.DOMAINS[0])
+
+    text = (
+        "🌐 <b>Панель управления сайтом MODEVA</b>\n\n"
+        f"🏷 <b>Название бренда:</b> <b>{site_name}</b>\n"
+        f"🛍 <b>Товаров на витрине:</b> <b>{len(products)}</b> шт.\n"
+        f"💬 <b>Тех. поддержка сайта:</b> <code>{support_username}</code>\n"
+        f"🌐 <b>Основной домен:</b> <code>{site_domain}</code>\n\n"
+        f"📝 <b>Главный слоган:</b>\n<i>«{site_hero_title}»</i>\n\n"
+        "⚡️ <i>Все изменения в боте моментально синхронизируются с живым сайтом без перезапуска.</i>"
+    )
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🛍 Товары магазина (Каталог / Цены / Удаление)", callback_data="admin_store_products_list_0")],
+            [InlineKeyboardButton(text="➕ Добавить новый товар на сайт", callback_data="admin_store_add_product")],
+            [InlineKeyboardButton(text="💬 Изменить контакт тех. поддержки", callback_data="admin_edit_support")],
+            [InlineKeyboardButton(text="🏷 Редактировать бренд и слоганы", callback_data="admin_edit_branding_menu")],
+            [InlineKeyboardButton(text="🌐 Изменить основной домен сайта", callback_data="admin_edit_domain")],
+            [InlineKeyboardButton(text="◀️ Назад в админку", callback_data="admin_back_main")]
+        ]
+    )
+
+    try:
+        await callback.message.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=kb)
+    except Exception:
+        await callback.message.answer(text, parse_mode=ParseMode.HTML, reply_markup=kb)
+    await callback.answer()
+
+
+@dp.callback_query(F.data == "admin_store_noop")
+async def cb_admin_store_noop(callback: CallbackQuery):
+    await callback.answer()
+
+
+# 1. Каталог товаров витрины магазина (Пагинация)
+@dp.callback_query(F.data.startswith("admin_store_products_list_"))
+async def cb_admin_store_products_list(callback: CallbackQuery):
+    page_str = callback.data.replace("admin_store_products_list_", "")
+    page = int(page_str) if page_str.isdigit() else 0
+
+    products = await db.get_all_store_products()
+    total_products = len(products)
+    page_size = 6
+    total_pages = max(1, (total_products + page_size - 1) // page_size)
+    page = max(0, min(page, total_pages - 1))
+
+    start_idx = page * page_size
+    end_idx = start_idx + page_size
+    current_items = products[start_idx:end_idx]
+
+    text = (
+        f"🛍 <b>Каталог товаров магазина MODEVA</b> (Стр. {page + 1}/{total_pages})\n"
+        f"Всего товаров в магазине: <b>{total_products}</b>\n\n"
+        f"<i>Выберите товар для просмотра деталей, смены цены или удаления:</i>"
+    )
+
+    kb_rows = []
+    for p in current_items:
+        btn_text = f"#{p['id']} {p['title'][:25]} • {p['price']:,.0f} ₽"
+        kb_rows.append([InlineKeyboardButton(text=btn_text, callback_data=f"adm_view_prod_{p['id']}")])
+
+    nav_row = []
+    if page > 0:
+        nav_row.append(InlineKeyboardButton(text="⬅️ Пред.", callback_data=f"admin_store_products_list_{page - 1}"))
+    nav_row.append(InlineKeyboardButton(text=f"📄 {page + 1}/{total_pages}", callback_data="admin_store_noop"))
+    if page < total_pages - 1:
+        nav_row.append(InlineKeyboardButton(text="След. ➡️", callback_data=f"admin_store_products_list_{page + 1}"))
+
+    if total_pages > 1:
+        kb_rows.append(nav_row)
+
+    kb_rows.append([InlineKeyboardButton(text="➕ Добавить товар на сайт", callback_data="admin_store_add_product")])
+    kb_rows.append([InlineKeyboardButton(text="◀️ Назад в управление сайтом", callback_data="admin_site_manage_menu")])
+
+    kb = InlineKeyboardMarkup(inline_keyboard=kb_rows)
+    try:
+        await callback.message.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=kb)
+    except Exception:
+        await callback.message.answer(text, parse_mode=ParseMode.HTML, reply_markup=kb)
+    await callback.answer()
+
+
+# 2. Карточка конкретного товара
+@dp.callback_query(F.data.startswith("adm_view_prod_"))
+async def cb_adm_view_product(callback: CallbackQuery):
+    pid_str = callback.data.replace("adm_view_prod_", "")
+    if not pid_str.isdigit():
+        await callback.answer("Товар не найден", show_alert=True)
+        return
+    pid = int(pid_str)
+    prod = await db.get_product_by_id(pid)
+    if not prod:
+        await callback.answer("Товар не найден или уже удален", show_alert=True)
+        await cb_admin_store_products_list(callback)
+        return
+
+    price = float(prod.get("price", 0))
+    cond = prod.get("condition", "Новое с биркой")
+    category = prod.get("category", "Не указана")
+    img = prod.get("image_url", "")
+    desc = prod.get("description", "Без описания")
+
+    text = (
+        f"🛍 <b>Карточка товара #{prod['id']}</b>\n\n"
+        f"🏷 <b>Название:</b> <b>{prod['title']}</b>\n"
+        f"📂 <b>Категория:</b> {category}\n"
+        f"💰 <b>Цена:</b> <b>{price:,.0f} ₽</b>\n"
+        f"✨ <b>Состояние:</b> {cond}\n"
+        f"🖼 <b>Изображение:</b> <code>{img or 'Стандартное'}</code>\n\n"
+        f"📝 <b>Описание:</b>\n{desc}"
+    )
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✏️ Изменить цену", callback_data=f"adm_edit_prc_{pid}")],
+            [InlineKeyboardButton(text="🗑 Удалить товар с сайта", callback_data=f"adm_del_prod_{pid}")],
+            [InlineKeyboardButton(text="◀️ К списку товаров", callback_data="admin_store_products_list_0")]
+        ]
+    )
+
+    try:
+        await callback.message.delete()
+    except Exception:
+        pass
+
+    if img and (img.startswith("http://") or img.startswith("https://")):
+        try:
+            await callback.message.answer_photo(photo=img, caption=text, parse_mode=ParseMode.HTML, reply_markup=kb)
+            await callback.answer()
+            return
+        except Exception:
+            pass
+    elif img and img.startswith("/static/"):
+        rel_path = img.lstrip("/")
+        abs_path = os.path.join(os.path.dirname(__file__), rel_path.replace("/", os.sep))
+        if os.path.exists(abs_path):
+            try:
+                await callback.message.answer_photo(photo=FSInputFile(abs_path), caption=text, parse_mode=ParseMode.HTML, reply_markup=kb)
+                await callback.answer()
+                return
+            except Exception:
+                pass
+
+    await callback.message.answer(text, parse_mode=ParseMode.HTML, reply_markup=kb)
+    await callback.answer()
+
+
+# 3. Изменение цены товара
+@dp.callback_query(F.data.startswith("adm_edit_prc_"))
+async def cb_adm_edit_price(callback: CallbackQuery, state: FSMContext):
+    pid = int(callback.data.replace("adm_edit_prc_", ""))
+    prod = await db.get_product_by_id(pid)
+    if not prod:
+        await callback.answer("Товар не найден", show_alert=True)
+        return
+
+    await state.set_state(AdminEditProductPriceState.waiting_for_price)
+    await state.update_data(edit_product_id=pid, edit_product_title=prod["title"])
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Отмена", callback_data=f"adm_view_prod_{pid}")]])
+    await callback.message.answer(
+        f"✏️ <b>Изменение цены товара #{pid}</b>\n\n"
+        f"Товар: <b>{prod['title']}</b>\n"
+        f"Текущая цена: <b>{prod['price']:,.0f} ₽</b>\n\n"
+        f"Введите новую стоимость в рублях (например: <code>150000</code>):",
+        parse_mode=ParseMode.HTML,
+        reply_markup=kb
+    )
+    await callback.answer()
+
+
+@dp.message(AdminEditProductPriceState.waiting_for_price)
+async def process_edit_product_price(message: Message, state: FSMContext):
+    data = await state.get_data()
+    pid = data.get("edit_product_id")
+    title = data.get("edit_product_title", "")
+
+    raw = message.text.replace(" ", "").replace("₽", "").replace(",", ".").strip()
+    try:
+        new_price = float(raw)
+        if new_price <= 0:
+            raise ValueError()
+    except ValueError:
+        await message.answer("⚠️ Пожалуйста, введите корректную положительную сумму (например: <code>120000</code>):", parse_mode=ParseMode.HTML)
+        return
+
+    await state.clear()
+    await db.update_product_price(pid, new_price)
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🛍 Открыть карточку товара", callback_data=f"adm_view_prod_{pid}")],
+            [InlineKeyboardButton(text="📋 К списку товаров", callback_data="admin_store_products_list_0")]
+        ]
+    )
+    await message.answer(
+        f"✅ <b>Цена товара успешно обновлена!</b>\n\n"
+        f"Товар: <b>{title}</b>\n"
+        f"Новая цена: <b>{new_price:,.0f} ₽</b>\n\n"
+        f"Изменение сразу отображается на сайте MODEVA.",
+        parse_mode=ParseMode.HTML,
+        reply_markup=kb
+    )
+
+
+# 4. Удаление товара
+@dp.callback_query(F.data.startswith("adm_del_prod_"))
+async def cb_adm_delete_product(callback: CallbackQuery):
+    pid = int(callback.data.replace("adm_del_prod_", ""))
+    prod = await db.get_product_by_id(pid)
+    title = prod["title"] if prod else f"#{pid}"
+    await db.delete_product(pid)
+    await callback.answer(f"Товар «{title}» успешно удален с сайта!", show_alert=True)
+    await cb_admin_store_products_list(callback)
+
+
+# 5. Добавление нового товара на сайт (Мастер добавления FSM)
+@dp.callback_query(F.data == "admin_store_add_product")
+async def cb_admin_store_add_product(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(AdminStoreProductState.waiting_for_title)
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_site_manage_menu")]])
+    await callback.message.answer(
+        "🛍 <b>Добавление товара на сайт MODEVA (Шаг 1/6)</b>\n\n"
+        "Введите наименование товара:\n"
+        "<i>(Например: Bottega Veneta Mini Jodie Leather Bag)</i>",
+        parse_mode=ParseMode.HTML,
+        reply_markup=kb
+    )
+    await callback.answer()
+
+
+@dp.message(AdminStoreProductState.waiting_for_title)
+async def process_prod_title(message: Message, state: FSMContext):
+    title = message.text.strip()
+    if not title:
+        await message.answer("Пожалуйста, введите название товара:")
+        return
+    await state.update_data(prod_title=title)
+    await state.set_state(AdminStoreProductState.waiting_for_category)
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="👜 Сумки", callback_data="adm_cat_Сумки"),
+                InlineKeyboardButton(text="👠 Обувь", callback_data="adm_cat_Обувь")
+            ],
+            [
+                InlineKeyboardButton(text="👗 Одежда", callback_data="adm_cat_Одежда"),
+                InlineKeyboardButton(text="🕶 Аксессуары", callback_data="adm_cat_Аксессуары")
+            ],
+            [
+                InlineKeyboardButton(text="⌚️ Часы", callback_data="adm_cat_Часы"),
+                InlineKeyboardButton(text="💎 Ювелирные изделия", callback_data="adm_cat_Ювелирные изделия")
+            ],
+            [InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_site_manage_menu")]
+        ]
+    )
+    await message.answer(
+        "📂 <b>Категория товара (Шаг 2/6)</b>\n\n"
+        "Выберите одну из популярных категорий ниже или напишите своё название категории в ответном сообщении:",
+        parse_mode=ParseMode.HTML,
+        reply_markup=kb
+    )
+
+
+@dp.callback_query(AdminStoreProductState.waiting_for_category, F.data.startswith("adm_cat_"))
+async def cb_prod_category_btn(callback: CallbackQuery, state: FSMContext):
+    category = callback.data.replace("adm_cat_", "")
+    await state.update_data(prod_category=category)
+    await state.set_state(AdminStoreProductState.waiting_for_price)
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_site_manage_menu")]])
+    await callback.message.answer(
+        f"✅ Категория: <b>{category}</b>\n\n"
+        "💰 <b>Стоимость товара (Шаг 3/6)</b>\n\n"
+        "Укажите стоимость товара в рублях:\n"
+        "<i>(Например: 165000)</i>",
+        parse_mode=ParseMode.HTML,
+        reply_markup=kb
+    )
+    await callback.answer()
+
+
+@dp.message(AdminStoreProductState.waiting_for_category)
+async def process_prod_category_text(message: Message, state: FSMContext):
+    category = message.text.strip()
+    await state.update_data(prod_category=category)
+    await state.set_state(AdminStoreProductState.waiting_for_price)
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_site_manage_menu")]])
+    await message.answer(
+        f"✅ Категория: <b>{category}</b>\n\n"
+        "💰 <b>Стоимость товара (Шаг 3/6)</b>\n\n"
+        "Укажите стоимость товара в рублях:\n"
+        "<i>(Например: 165000)</i>",
+        parse_mode=ParseMode.HTML,
+        reply_markup=kb
+    )
+
+
+@dp.message(AdminStoreProductState.waiting_for_price)
+async def process_prod_price(message: Message, state: FSMContext):
+    raw = message.text.replace(" ", "").replace("₽", "").replace(",", ".").strip()
+    try:
+        price = float(raw)
+        if price <= 0: raise ValueError()
+    except ValueError:
+        await message.answer("⚠️ Введите корректную сумму в рублях (например: <code>185000</code>):", parse_mode=ParseMode.HTML)
+        return
+
+    await state.update_data(prod_price=price)
+    await state.set_state(AdminStoreProductState.waiting_for_condition)
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="✨ Новое с биркой", callback_data="adm_cnd_Новое с биркой"),
+                InlineKeyboardButton(text="💎 Идеальное", callback_data="adm_cnd_Идеальное")
+            ],
+            [
+                InlineKeyboardButton(text="⭐️ Отличное", callback_data="adm_cnd_Отличное"),
+                InlineKeyboardButton(text="🏆 Коллекционное", callback_data="adm_cnd_Коллекционное")
+            ],
+            [InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_site_manage_menu")]
+        ]
+    )
+    await message.answer(
+        "✨ <b>Состояние товара (Шаг 4/6)</b>\n\n"
+        "Выберите состояние товара кнопкой или напишите свой вариант сообщением:",
+        parse_mode=ParseMode.HTML,
+        reply_markup=kb
+    )
+
+
+@dp.callback_query(AdminStoreProductState.waiting_for_condition, F.data.startswith("adm_cnd_"))
+async def cb_prod_condition_btn(callback: CallbackQuery, state: FSMContext):
+    condition = callback.data.replace("adm_cnd_", "")
+    await state.update_data(prod_condition=condition)
+    await state.set_state(AdminStoreProductState.waiting_for_photo)
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="⏩ Пропустить (дефолтное фото бутика)", callback_data="adm_skip_photo")],
+            [InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_site_manage_menu")]
+        ]
+    )
+    await callback.message.answer(
+        f"✅ Состояние: <b>{condition}</b>\n\n"
+        "🖼 <b>Фотография товара (Шаг 5/6)</b>\n\n"
+        "Отправьте боту фотографию товара прямо в этот чат, либо пришлите прямую веб-ссылку на картинку (https://...)\n\n"
+        "<i>Или нажмите «Пропустить» для установки стандартного стильного фото.</i>",
+        parse_mode=ParseMode.HTML,
+        reply_markup=kb
+    )
+    await callback.answer()
+
+
+@dp.message(AdminStoreProductState.waiting_for_condition)
+async def process_prod_condition_text(message: Message, state: FSMContext):
+    condition = message.text.strip()
+    await state.update_data(prod_condition=condition)
+    await state.set_state(AdminStoreProductState.waiting_for_photo)
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="⏩ Пропустить (дефолтное фото бутика)", callback_data="adm_skip_photo")],
+            [InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_site_manage_menu")]
+        ]
+    )
+    await message.answer(
+        f"✅ Состояние: <b>{condition}</b>\n\n"
+        "🖼 <b>Фотография товара (Шаг 5/6)</b>\n\n"
+        "Отправьте боту фотографию товара прямо в этот чат, либо пришлите прямую веб-ссылку на картинку (https://...)\n\n"
+        "<i>Или нажмите «Пропустить» для установки стандартного стильного фото.</i>",
+        parse_mode=ParseMode.HTML,
+        reply_markup=kb
+    )
+
+
+@dp.callback_query(AdminStoreProductState.waiting_for_photo, F.data == "adm_skip_photo")
+async def cb_prod_skip_photo(callback: CallbackQuery, state: FSMContext):
+    await state.update_data(prod_image_url="/static/images/products/bag1.png")
+    await state.set_state(AdminStoreProductState.waiting_for_description)
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="⏩ Пропустить описание", callback_data="adm_skip_desc")],
+            [InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_site_manage_menu")]
+        ]
+    )
+    await callback.message.answer(
+        "📝 <b>Описание товара (Шаг 6/6)</b>\n\n"
+        "Введите подробное описание товара (комплектация, пыльник, коробка, чек бутика, особенности):\n\n"
+        "<i>Или нажмите «Пропустить описание».</i>",
+        parse_mode=ParseMode.HTML,
+        reply_markup=kb
+    )
+    await callback.answer()
+
+
+@dp.message(AdminStoreProductState.waiting_for_photo, F.photo | F.document | F.text)
+async def process_prod_photo(message: Message, state: FSMContext):
+    image_url = "/static/images/products/bag1.png"
+
+    if message.photo:
+        file_id = message.photo[-1].file_id
+        file = await bot.get_file(file_id)
+        fname = f"prod_{uuid.uuid4().hex[:10]}.jpg"
+        save_path = os.path.join(UPLOADS_DIR, fname)
+        await bot.download_file(file.file_path, destination=save_path)
+        image_url = f"/static/images/uploads/{fname}"
+    elif message.document and (message.document.mime_type or "").startswith("image/"):
+        file_id = message.document.file_id
+        file = await bot.get_file(file_id)
+        ext = os.path.splitext(message.document.file_name or "file.jpg")[1] or ".jpg"
+        fname = f"prod_{uuid.uuid4().hex[:10]}{ext}"
+        save_path = os.path.join(UPLOADS_DIR, fname)
+        await bot.download_file(file.file_path, destination=save_path)
+        image_url = f"/static/images/uploads/{fname}"
+    elif message.text and (message.text.startswith("http://") or message.text.startswith("https://")):
+        image_url = message.text.strip()
+    else:
+        await message.answer("⚠️ Пожалуйста, пришлите фотографию товара или прямую ссылку на изображение (https://...):")
+        return
+
+    await state.update_data(prod_image_url=image_url)
+    await state.set_state(AdminStoreProductState.waiting_for_description)
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="⏩ Пропустить описание", callback_data="adm_skip_desc")],
+            [InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_site_manage_menu")]
+        ]
+    )
+    await message.answer(
+        "📝 <b>Описание товара (Шаг 6/6)</b>\n\n"
+        "Введите подробное описание товара (комплектация, пыльник, коробка, чек бутика, особенности):\n\n"
+        "<i>Или нажмите «Пропустить описание».</i>",
+        parse_mode=ParseMode.HTML,
+        reply_markup=kb
+    )
+
+
+@dp.callback_query(AdminStoreProductState.waiting_for_description, F.data == "adm_skip_desc")
+async def cb_prod_skip_desc(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    await state.clear()
+
+    title = data.get("prod_title", "Без названия")
+    category = data.get("prod_category", "Аксессуары")
+    price = data.get("prod_price", 100000.0)
+    condition = data.get("prod_condition", "Новое с биркой")
+    image_url = data.get("prod_image_url", "/static/images/products/bag1.png")
+    description = "Оригинальное изделие бутика. Полная комплектация, документы подлинности, фирменный пыльник и упаковка."
+
+    prod = await db.add_store_product(
+        title=title,
+        category=category,
+        price=price,
+        image_url=image_url,
+        description=description,
+        condition=condition
+    )
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🛍 Открыть карточку товара", callback_data=f"adm_view_prod_{prod['id']}")],
+            [InlineKeyboardButton(text="📋 К списку товаров", callback_data="admin_store_products_list_0")],
+            [InlineKeyboardButton(text="🌐 В управление сайтом", callback_data="admin_site_manage_menu")]
+        ]
+    )
+
+    await callback.message.answer(
+        f"🎉 <b>Товар успешно добавлен на сайт MODEVA!</b>\n\n"
+        f"🏷 <b>{prod['title']}</b> (#{prod['id']})\n"
+        f"📂 Категория: {prod['category']}\n"
+        f"💰 Цена: <b>{prod['price']:,.0f} ₽</b>\n"
+        f"✨ Состояние: {prod['condition']}\n\n"
+        f"Товар уже доступен всем покупателям на витрине сайта!",
+        parse_mode=ParseMode.HTML,
+        reply_markup=kb
+    )
+    await callback.answer()
+
+
+@dp.message(AdminStoreProductState.waiting_for_description)
+async def process_prod_description(message: Message, state: FSMContext):
+    data = await state.get_data()
+    await state.clear()
+
+    title = data.get("prod_title", "Без названия")
+    category = data.get("prod_category", "Аксессуары")
+    price = data.get("prod_price", 100000.0)
+    condition = data.get("prod_condition", "Новое с биркой")
+    image_url = data.get("prod_image_url", "/static/images/products/bag1.png")
+    description = message.text.strip() or "Оригинальное изделие бутика."
+
+    prod = await db.add_store_product(
+        title=title,
+        category=category,
+        price=price,
+        image_url=image_url,
+        description=description,
+        condition=condition
+    )
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🛍 Открыть карточку товара", callback_data=f"adm_view_prod_{prod['id']}")],
+            [InlineKeyboardButton(text="📋 К списку товаров", callback_data="admin_store_products_list_0")],
+            [InlineKeyboardButton(text="🌐 В управление сайтом", callback_data="admin_site_manage_menu")]
+        ]
+    )
+
+    await message.answer(
+        f"🎉 <b>Товар успешно добавлен на сайт MODEVA!</b>\n\n"
+        f"🏷 <b>{prod['title']}</b> (#{prod['id']})\n"
+        f"📂 Категория: {prod['category']}\n"
+        f"💰 Цена: <b>{prod['price']:,.0f} ₽</b>\n"
+        f"✨ Состояние: {prod['condition']}\n\n"
+        f"Товар уже доступен всем покупателям на витрине сайта!",
+        parse_mode=ParseMode.HTML,
+        reply_markup=kb
+    )
+
+
+# 6. Управление техподдержкой сайта
+@dp.callback_query(F.data == "admin_edit_support")
+async def cb_admin_edit_support(callback: CallbackQuery, state: FSMContext):
+    settings = await db.get_site_settings()
+    curr = settings.get("support_username", config.SUPPORT_USERNAME)
+
+    await state.set_state(AdminSupportState.waiting_for_username)
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_site_manage_menu")]])
+
+    await callback.message.answer(
+        "💬 <b>Настройка контактов Тех. Поддержки сайта</b>\n\n"
+        f"Текущий контакт поддержки: <code>{curr}</code>\n\n"
+        "Отправьте новый юзернейм или прямую ссылку на Telegram тех. поддержки:\n"
+        "<i>Примеры:</i>\n"
+        "• <code>@MODEVA_SUPPORT</code>\n"
+        "• <code>https://t.me/MODEVA_SUPPORT</code>\n\n"
+        "Все кнопки «Связаться с поддержкой», шапка сайта, подвал и плавающий виджет сразу переключатся на этот контакт.",
+        parse_mode=ParseMode.HTML,
+        reply_markup=kb
+    )
+    await callback.answer()
+
+
+@dp.message(AdminSupportState.waiting_for_username)
+async def process_admin_support(message: Message, state: FSMContext):
+    raw = message.text.strip()
+    await state.clear()
+
+    if "t.me/" in raw:
+        val = raw
+    else:
+        val = "@" + raw.lstrip("@")
+
+    await db.set_bot_setting("support_username", val)
+    config.SUPPORT_USERNAME = val
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🌐 Вернуться в управление сайтом", callback_data="admin_site_manage_menu")],
+            [InlineKeyboardButton(text="👑 В главное меню админки", callback_data="admin_back_main")]
+        ]
+    )
+
+    await message.answer(
+        f"✅ <b>Контакт техподдержки успешно обновлен!</b>\n\n"
+        f"Новый контакт: <code>{val}</code>\n\n"
+        f"Изменение мгновенно вступило в силу на живом сайте MODEVA.",
+        parse_mode=ParseMode.HTML,
+        reply_markup=kb
+    )
+
+
+# 7. Управление брендом и слоганами
+@dp.callback_query(F.data == "admin_edit_branding_menu")
+async def cb_admin_branding_menu(callback: CallbackQuery, state: FSMContext = None):
+    if state:
+        await state.clear()
+    settings = await db.get_site_settings()
+
+    name = settings.get("site_name", "MODEVA")
+    hero_title = settings.get("site_hero_title", "Не просто маркетплейс, a MODEVA — стиль вне времени")
+    hero_sub = settings.get("site_hero_subtitle", "Ваш надёжный посредник с продавцом.")
+
+    text = (
+        "🏷 <b>Настройка бренда и слоганов сайта</b>\n\n"
+        f"1️⃣ <b>Название сайта:</b> <b>{name}</b>\n"
+        f"2️⃣ <b>Главный заголовок:</b> <i>«{hero_title}»</i>\n"
+        f"3️⃣ <b>Подзаголовок:</b> <i>«{hero_sub}»</i>\n\n"
+        "<i>Выберите, что хотите изменить:</i>"
+    )
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✏️ Изменить название бренда", callback_data="admin_set_brand_name")],
+            [InlineKeyboardButton(text="✏️ Изменить главный заголовок", callback_data="admin_set_brand_title")],
+            [InlineKeyboardButton(text="✏️ Изменить подзаголовок", callback_data="admin_set_brand_subtitle")],
+            [InlineKeyboardButton(text="🔄 Сбросить слоганы к дефолтным", callback_data="admin_reset_brand_defaults")],
+            [InlineKeyboardButton(text="◀️ Назад в управление сайтом", callback_data="admin_site_manage_menu")]
+        ]
+    )
+
+    try:
+        await callback.message.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=kb)
+    except Exception:
+        await callback.message.answer(text, parse_mode=ParseMode.HTML, reply_markup=kb)
+    await callback.answer()
+
+
+@dp.callback_query(F.data == "admin_set_brand_name")
+async def cb_admin_set_brand_name(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(AdminSiteBrandingState.waiting_for_name)
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_edit_branding_menu")]])
+    await callback.message.answer("Введите новое название для маркетплейса (например: <code>MODEVA</code>):", parse_mode=ParseMode.HTML, reply_markup=kb)
+    await callback.answer()
+
+
+@dp.message(AdminSiteBrandingState.waiting_for_name)
+async def process_brand_name(message: Message, state: FSMContext):
+    val = message.text.strip()
+    await state.clear()
+    await db.set_bot_setting("site_name", val)
+    await message.answer(f"✅ Название сайта изменено на: <b>{val}</b>")
+    await cb_admin_branding_menu_msg(message)
+
+
+@dp.callback_query(F.data == "admin_set_brand_title")
+async def cb_admin_set_brand_title(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(AdminSiteBrandingState.waiting_for_hero_title)
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_edit_branding_menu")]])
+    await callback.message.answer("Введите главный заголовок витрины:", parse_mode=ParseMode.HTML, reply_markup=kb)
+    await callback.answer()
+
+
+@dp.message(AdminSiteBrandingState.waiting_for_hero_title)
+async def process_brand_title(message: Message, state: FSMContext):
+    val = message.text.strip()
+    await state.clear()
+    await db.set_bot_setting("site_hero_title", val)
+    await message.answer(f"✅ Главный заголовок сайта обновлен на:\n<i>«{val}»</i>", parse_mode=ParseMode.HTML)
+    await cb_admin_branding_menu_msg(message)
+
+
+@dp.callback_query(F.data == "admin_set_brand_subtitle")
+async def cb_admin_set_brand_subtitle(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(AdminSiteBrandingState.waiting_for_hero_subtitle)
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_edit_branding_menu")]])
+    await callback.message.answer("Введите подзаголовок витрины:", parse_mode=ParseMode.HTML, reply_markup=kb)
+    await callback.answer()
+
+
+@dp.message(AdminSiteBrandingState.waiting_for_hero_subtitle)
+async def process_brand_subtitle(message: Message, state: FSMContext):
+    val = message.text.strip()
+    await state.clear()
+    await db.set_bot_setting("site_hero_subtitle", val)
+    await message.answer(f"✅ Подзаголовок сайта обновлен на:\n<i>«{val}»</i>", parse_mode=ParseMode.HTML)
+    await cb_admin_branding_menu_msg(message)
+
+
+@dp.callback_query(F.data == "admin_reset_brand_defaults")
+async def cb_admin_reset_brand(callback: CallbackQuery):
+    await db.set_bot_setting("site_name", "MODEVA")
+    await db.set_bot_setting("site_hero_title", "Не просто маркетплейс, a MODEVA — стиль вне времени")
+    await db.set_bot_setting("site_hero_subtitle", "Ваш надёжный посредник с продавцом.")
+    await callback.answer("Бренд и слоганы сброшены к дефолтным!", show_alert=True)
+    await cb_admin_branding_menu(callback)
+
+
+async def cb_admin_branding_menu_msg(message: Message):
+    settings = await db.get_site_settings()
+    name = settings.get("site_name", "MODEVA")
+    hero_title = settings.get("site_hero_title", "Не просто маркетплейс, a MODEVA — стиль вне времени")
+    hero_sub = settings.get("site_hero_subtitle", "Ваш надёжный посредник с продавцом.")
+
+    text = (
+        "🏷 <b>Настройка бренда и слоганов сайта</b>\n\n"
+        f"1️⃣ <b>Название сайта:</b> <b>{name}</b>\n"
+        f"2️⃣ <b>Главный заголовок:</b> <i>«{hero_title}»</i>\n"
+        f"3️⃣ <b>Подзаголовок:</b> <i>«{hero_sub}»</i>"
+    )
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✏️ Изменить название бренда", callback_data="admin_set_brand_name")],
+            [InlineKeyboardButton(text="✏️ Изменить главный заголовок", callback_data="admin_set_brand_title")],
+            [InlineKeyboardButton(text="✏️ Изменить подзаголовок", callback_data="admin_set_brand_subtitle")],
+            [InlineKeyboardButton(text="🔄 Сбросить слоганы к дефолтным", callback_data="admin_reset_brand_defaults")],
+            [InlineKeyboardButton(text="◀️ Назад в управление сайтом", callback_data="admin_site_manage_menu")]
+        ]
+    )
+    await message.answer(text, parse_mode=ParseMode.HTML, reply_markup=kb)
+
+
+# 8. Управление доменом сайта
+@dp.callback_query(F.data == "admin_edit_domain")
+async def cb_admin_edit_domain(callback: CallbackQuery, state: FSMContext):
+    settings = await db.get_site_settings()
+    curr = settings.get("site_domain", config.DOMAINS[0])
+
+    await state.set_state(AdminDomainState.waiting_for_domain)
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_site_manage_menu")]])
+
+    await callback.message.answer(
+        "🌐 <b>Настройка основного домена сайта MODEVA</b>\n\n"
+        f"Текущий домен: <code>{curr}</code>\n\n"
+        "Отправьте новый URL адрес сайта:\n"
+        "<i>(Например: https://modeva-99k6.onrender.com/)</i>\n\n"
+        "Этот домен будет использоваться во всех кнопках «Открыть сайт» и реферальных ссылках воркеров.",
+        parse_mode=ParseMode.HTML,
+        reply_markup=kb
+    )
+    await callback.answer()
+
+
+@dp.message(AdminDomainState.waiting_for_domain)
+async def process_admin_domain(message: Message, state: FSMContext):
+    raw = message.text.strip()
+    await state.clear()
+
+    val = raw
+    if not val.startswith("http://") and not val.startswith("https://"):
+        val = f"https://{val}"
+    if not val.endswith("/"):
+        val += "/"
+
+    await db.set_bot_setting("site_domain", val)
+    config.DOMAINS[0] = val
+    config.BASE_URL = val
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🌐 Вернуться в управление сайтом", callback_data="admin_site_manage_menu")],
+            [InlineKeyboardButton(text="👑 В главное меню админки", callback_data="admin_back_main")]
+        ]
+    )
+
+    await message.answer(
+        f"✅ <b>Основной домен сайта успешно обновлен!</b>\n\n"
+        f"Новый адрес: <code>{val}</code>\n\n"
+        f"Все ссылки на сайт для воркеров теперь ведут на этот адрес.",
+        parse_mode=ParseMode.HTML,
+        reply_markup=kb
+    )
 
 
 # --- 📢 ВЫКЛАДКА ПРОФИТОВ В КАНАЛ ---
@@ -2152,19 +2977,43 @@ async def handle_internal_action_log(request: web.Request):
     return web.json_response({"status": "ok"})
 
 
+async def handle_internal_settings(request: web.Request):
+    settings = await db.get_site_settings()
+    return web.json_response(settings)
+
+
+async def handle_internal_catalog(request: web.Request):
+    category = request.query.get("category")
+    search = request.query.get("search")
+    promo_code = request.query.get("promo_code")
+    products = await db.get_catalog_products(category=category, search=search, promo_code=promo_code)
+    return web.json_response({"status": "ok", "products": products})
+
+
 # --- Runner ---
 async def start_bot():
     logger.info("Initializing database...")
     await db.init_db()
 
-    # Web server on PORT for Render free tier
+    # Load dynamic settings into config
+    settings = await db.get_site_settings()
+    if settings.get("site_domain"):
+        config.DOMAINS[0] = settings["site_domain"]
+        config.BASE_URL = settings["site_domain"]
+    if settings.get("support_username"):
+        config.SUPPORT_USERNAME = settings["support_username"]
+
+    # Web server on PORT for Render free tier & internal API
     port = int(os.environ.get("PORT", "8080"))
     web_app = web.Application()
     web_app.router.add_get("/", handle_root)
     web_app.router.add_get("/health", handle_health)
     web_app.router.add_get("/api/internal/promo", handle_internal_promo)
+    web_app.router.add_get("/api/internal/settings", handle_internal_settings)
+    web_app.router.add_get("/api/internal/catalog", handle_internal_catalog)
     web_app.router.add_post("/api/internal/order", handle_internal_order)
     web_app.router.add_post("/api/internal/action-log", handle_internal_action_log)
+    web_app.router.add_static("/static", path=BASE_STATIC_DIR)
 
     runner = web.AppRunner(web_app)
     await runner.setup()

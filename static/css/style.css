@@ -803,3 +803,50 @@ body {
     line-height: 1.6;
     margin-bottom: 24px;
 }
+
+/* Support Buttons */
+.support-header-btn {
+    display: inline-flex;
+    align-items: center;
+    background: #f4f4f5;
+    color: #18181b;
+    border: 1px solid #e4e4e7;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 14px;
+    border-radius: 9999px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.support-header-btn:hover {
+    background: #18181b;
+    color: #fff;
+    border-color: #18181b;
+}
+
+.floating-support-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #18181b;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-radius: 9999px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    z-index: 999;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.floating-support-btn:hover {
+    transform: translateY(-3px) scale(1.03);
+    background: #000;
+    box-shadow: 0 16px 32px -4px rgba(0, 0, 0, 0.35);
+    color: #fff;
+}

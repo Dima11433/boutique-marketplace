@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MODEVA — Ключ к премиальному шоппингу</title>
+    <title>{{ site_name|default('MODEVA') }} — Ключ к премиальному шоппингу</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -34,9 +34,16 @@
     <!-- Header Navigation -->
     <header class="site-header">
         <div class="container header-container">
-            <a href="/" class="brand-logo">MODEVA</a>
+            <a href="/" class="brand-logo">{{ site_name|default('MODEVA') }}</a>
             
             <div class="header-actions">
+                <a href="https://t.me/{{ (support_username|default('@kristiq_q')).lstrip('@') }}" target="_blank" class="btn btn-outline-sm support-header-btn" title="Связаться с техподдержкой">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 4px;">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    Поддержка
+                </a>
+
                 <button class="icon-btn" onclick="openFavorites()" title="Избранное">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
@@ -72,8 +79,8 @@
             <section class="hero-section">
                 <div class="hero-banner">
                     <div class="hero-text">
-                        <h1 class="hero-title">Не просто маркетплейс, a MODEVA — стиль вне времени</h1>
-                        <p class="hero-subtitle">Ваш надёжный посредник с продавцом.</p>
+                        <h1 class="hero-title">{{ site_hero_title|default('Не просто маркетплейс, a MODEVA — стиль вне времени') }}</h1>
+                        <p class="hero-subtitle">{{ site_hero_subtitle|default('Ваш надёжный посредник с продавцом.') }}</p>
                     </div>
                     <div class="hero-keys-graphic">
                         <div class="key-3d-symbol">🗝️</div>
@@ -158,12 +165,12 @@
             </div>
             <div class="footer-col">
                 <h4>Контакты</h4>
-                <p>Клиентская поддержка: {{ support_username|default('@kristiq_q') }}</p>
+                <p>Клиентская поддержка: <a href="https://t.me/{{ (support_username|default('@kristiq_q')).lstrip('@') }}" target="_blank" style="color: #18181b; font-weight: 600; text-decoration: underline;">{{ support_username|default('@kristiq_q') }}</a></p>
                 <p>Ежедневно с 10:00 до 22:00</p>
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2026 MODEVA. Все права защищены. Сервис безопасных сделок.</p>
+            <p>&copy; 2026 {{ site_name|default('MODEVA') }}. Все права защищены. Сервис безопасных сделок.</p>
         </div>
     </footer>
 
@@ -302,6 +309,14 @@
             </div>
         </div>
     </div>
+
+    <!-- Floating Luxury Support Button -->
+    <a href="https://t.me/{{ (support_username|default('@kristiq_q')).lstrip('@') }}" target="_blank" class="floating-support-btn" title="Связаться с техподдержкой">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span>Поддержка 24/7</span>
+    </a>
 
     <!-- Hidden Initial Context for JS -->
     <script>
