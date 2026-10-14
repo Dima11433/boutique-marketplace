@@ -1,7 +1,7 @@
 services:
   # 1. Telegram Worker Bot (Free Web Service on Render)
   - type: web
-    name: boutique-worker-bot
+    name: modeva-bot
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
@@ -14,9 +14,9 @@ services:
       - key: LOG_CHAT_ID
         value: -1004495225020
 
-  # 2. Boutique Mirelle Marketplace (Free Web Service)
+  # 2. MODEVA Luxury Marketplace (Free Web Service)
   - type: web
-    name: boutique-marketplace
+    name: modeva-store
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
@@ -27,5 +27,5 @@ services:
       - key: BOT_API_URL
         fromService:
           type: web
-          name: boutique-worker-bot
+          name: modeva-bot
           property: host
