@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D-Трекинг Доставки — {{ site_name|default('MODEVA') }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="icon" type="image/png" href="/static/images/p1_briefcase.png">
+    <style>
+        body {
+            background-color: #0b0c10;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tracking-page-main {
+            flex: 1;
+            padding: 40px 0 80px 0;
+        }
+
+        .tracking-header-section {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .tracking-breadcrumbs {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 12px;
+        }
+
+        .tracking-breadcrumbs a {
+            color: #d4af37;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .tracking-breadcrumbs a:hover {
+            color: #fef08a;
+        }
+
+        .tracking-page-title {
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-size: 42px;
+            font-weight: 600;
+            color: #ffffff;
+            margin: 0 0 10px 0;
+            letter-spacing: 0.02em;
+        }
+
+        .tracking-page-subtitle {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.65);
+            max-width: 600px;
+            margin: 0 auto 24px auto;
+            line-height: 1.5;
+        }
+
+        /* Order Search Bar */
+        .order-search-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            max-width: 480px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 100px;
+            padding: 4px 6px 4px 18px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            transition: border-color 0.3s;
+        }
+
+        .order-search-bar:focus-within {
+            border-color: #d4af37;
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+        }
+
+        .order-search-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+        }
+
+        .order-search-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .order-search-btn {
+            background: linear-gradient(135deg, #d4af37, #aa820a);
+            border: none;
+            color: #0b0c10;
+            font-weight: 700;
+            font-size: 13px;
+            padding: 9px 20px;
+            border-radius: 100px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .order-search-btn:hover {
+            transform: scale(1.03);
+            box-shadow: 0 4px 14px rgba(212, 175, 55, 0.4);
+        }
+
+        /* Information Grid below 3D tracker */
+        .tracking-perks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+            margin-top: 40px;
+        }
+
+        .perk-card {
+            background: rgba(18, 20, 29, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+
+        .perk-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(212, 175, 55, 0.4);
+        }
+
+        .perk-icon {
+            font-size: 28px;
+            line-height: 1;
+        }
+
+        .perk-info h4 {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0 0 6px 0;
+            color: #ffffff;
+        }
+
+        .perk-info p {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+            margin: 0;
+            line-height: 1.45;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header class="site-header">
+        <div class="container header-container">
+            <a href="/" class="brand-logo">{{ site_name|default('MODEVA') }}</a>
+            
+            <div class="header-actions">
+                <a href="/" class="btn btn-outline-sm">
+                    ◀️ В каталог
+                </a>
+                <a href="https://t.me/{{ (support_username|default('@kristiq_q')).lstrip('@') }}" target="_blank" class="btn btn-outline-sm support-header-btn" title="Связаться с техподдержкой">
+                    💬 Поддержка 24/7
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="tracking-page-main">
+        <div class="container">
+            
+            <div class="tracking-header-section">
+                <div class="tracking-breadcrumbs">
+                    <a href="/">Главная</a> &nbsp;/&nbsp; <span>Интерактивный 3D-трекинг доставки</span>
+                </div>
+                <h1 class="tracking-page-title">Служба Консьерж-Доставки {{ site_name|default('MODEVA') }}</h1>
+                <p class="tracking-page-subtitle">
+                    Наблюдайте за перемещением вашего заказа в реальном времени. Интерактивная 3D-схема синхронизируется со спутниковой логистикой бутика.
+                </p>
+
+                <form class="order-search-bar" onsubmit="event.preventDefault(); trackCustomOrder();">
+                    <input type="text" id="orderSearchInput" class="order-search-input" placeholder="Введите номер заказа (например: BM-849201)" value="{{ order_number if order_number != 'GLOBAL' else '' }}">
+                    <button type="submit" class="order-search-btn">Отследить</button>
+                </form>
+            </div>
+
+            <!-- 🚚 3D Interactive Tracking Component Included Here -->
+            {% include "components/delivery_tracking.html" %}
+
+            <!-- Perks & Security Highlights -->
+            <div class="tracking-perks-grid">
+                <div class="perk-card">
+                    <div class="perk-icon">🛡️</div>
+                    <div class="perk-info">
+                        <h4>100% Страховка и Сертификация</h4>
+                        <p>Каждое изделие застраховано на полную стоимость и снабжено фирменной пломбой подлинности MODEVA.</p>
+                    </div>
+                </div>
+
+                <div class="perk-card">
+                    <div class="perk-icon">🧤</div>
+                    <div class="perk-info">
+                        <h4>White Glove Courier</h4>
+                        <p>Персональный курьер доставит заказ в белых перчатках в удобное для вас время с возможностью примерки.</p>
+                    </div>
+                </div>
+
+                <div class="perk-card">
+                    <div class="perk-icon">🛰️</div>
+                    <div class="perk-info">
+                        <h4>Спутниковый GPS-мониторинг</h4>
+                        <p>Непрерывный контроль маршрута и температурного режима в кузове спецтранспорта.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="container footer-container">
+            <div class="footer-brand">
+                <span class="footer-logo">{{ site_name|default('MODEVA') }}</span>
+                <p class="footer-desc">Премиальный консьерж-сервис оригинальных брендовых вещей.</p>
+            </div>
+            <div class="footer-copy">
+                &copy; 2026 {{ site_name|default('MODEVA') }}. Все права защищены.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function trackCustomOrder() {
+            const input = document.getElementById('orderSearchInput');
+            const val = input.value.trim().toUpperCase();
+            if (val) {
+                window.location.href = `/tracking?order=${encodeURIComponent(val)}`;
+            } else {
+                window.location.href = '/tracking';
+            }
+        }
+    </script>
+</body>
+</html>

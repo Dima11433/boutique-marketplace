@@ -341,7 +341,11 @@ async function submitOrder(e) {
         const data = await res.json();
         if (data.status === "ok") {
             closeModal("checkoutModal");
-            document.getElementById("successOrderNum").textContent = `#${data.order.order_number}`;
+            const orderNum = data.order ? data.order.order_number : "";
+            const trackBtn = document.getElementById("successTrackBtn");
+            if (trackBtn && orderNum) {
+                trackBtn.href = `/tracking?order=${encodeURIComponent(orderNum)}`;
+            }
             openModal("successModal");
             document.getElementById("orderForm").reset();
         } else {

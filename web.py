@@ -1,7 +1,9 @@
 import os
+import json
 import logging
 import httpx
-from fastapi import FastAPI, Request, HTTPException, Form
+import socketio
+from fastapi import FastAPI, Request, HTTPException, Form, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -22,6 +24,54 @@ except Exception:
     async def post_profit_to_channel(*args, **kwargs): return True, ""
 
 app = FastAPI(title="MODEVA Marketplace")
+
+# Socket.IO Real-time Server
+sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
+sio_asgi = socketio.ASGIApp(sio)
+app.mount("/socket.io", sio_asgi)
+
+# Native WebSockets Connection Manager
+class WebSocketConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    async def broadcast(self, data: dict):
+        for ws in list(self.active_connections):
+            try:
+                await ws.send_json(data)
+            except Exception:
+                pass
+
+ws_manager = WebSocketConnectionManager()
+
+async def broadcast_delivery_update(stage_data: dict):
+    # 1. Emit via socket.io
+    try:
+        await sio.emit("delivery_stage_update", stage_data)
+    except Exception as e:
+        logger.warning(f"Error emitting via socketio: {e}")
+
+    # 2. Emit via native websockets
+    await ws_manager.broadcast(stage_data)
+
+@sio.event
+async def connect(sid, environ):
+    stage = await db.get_delivery_stage("GLOBAL")
+    await sio.emit("delivery_stage_update", stage, to=sid)
+
+@sio.event
+async def subscribe_order(sid, data):
+    order_num = data.get("order_number", "GLOBAL") if isinstance(data, dict) else str(data or "GLOBAL")
+    stage = await db.get_delivery_stage(order_num)
+    await sio.emit("delivery_stage_update", stage, to=sid)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
@@ -54,6 +104,11 @@ class ActionLogRequest(BaseModel):
     product_title: Optional[str] = ""
     client_name: Optional[str] = "Гость"
     promo_code: Optional[str] = ""
+
+
+class DeliveryStageUpdateRequest(BaseModel):
+    stage: int
+    order_number: Optional[str] = "GLOBAL"
 
 
 # --- Routes ---
@@ -400,3 +455,67 @@ async def api_action_log(data: ActionLogRequest):
 
     await notify_worker(worker["telegram_id"], action_text)
     return {"status": "ok"}
+
+
+# --- 🚚 3D Interactive Delivery Tracking Endpoints ---
+
+@app.get("/tracking", response_class=HTMLResponse)
+async def tracking_page(request: Request, order: Optional[str] = "GLOBAL", ref: Optional[str] = None):
+    order_num = (order or "GLOBAL").strip().upper()
+    stage_data = await db.get_delivery_stage(order_num)
+    settings = await db.get_site_settings()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="tracking.html",
+        context={
+            "order_number": order_num,
+            "stage_data": stage_data,
+            "current_stage": stage_data.get("current_stage", 1),
+            "support_username": settings.get("support_username", config.SUPPORT_USERNAME),
+            "site_name": settings.get("site_name", "MODEVA"),
+            "site_domain": settings.get("site_domain", config.DOMAINS[0]),
+            "ref": ref or ""
+        }
+    )
+
+
+@app.get("/api/delivery-stage")
+async def api_get_delivery_stage(order: Optional[str] = "GLOBAL"):
+    order_num = (order or "GLOBAL").strip().upper()
+    data = await db.get_delivery_stage(order_num)
+    return {"status": "ok", "delivery": data}
+
+
+@app.post("/api/internal/delivery-stage")
+async def api_update_delivery_stage(data: DeliveryStageUpdateRequest):
+    updated = await db.set_delivery_stage(data.stage, data.order_number)
+    await broadcast_delivery_update(updated)
+    return {"status": "ok", "delivery": updated}
+
+
+@app.websocket("/ws/tracking")
+@app.websocket("/ws/tracking/{order_number}")
+async def websocket_tracking(websocket: WebSocket, order_number: Optional[str] = "GLOBAL"):
+    await ws_manager.connect(websocket)
+    ord_num = (order_number or "GLOBAL").strip().upper()
+    try:
+        # Immediately send current state on connect
+        curr = await db.get_delivery_stage(ord_num)
+        await websocket.send_json(curr)
+        while True:
+            msg = await websocket.receive_text()
+            if "ping" in msg:
+                await websocket.send_text("pong")
+            elif "subscribe" in msg:
+                try:
+                    obj = json.loads(msg)
+                    target_ord = obj.get("order_number", ord_num)
+                    stg = await db.get_delivery_stage(target_ord)
+                    await websocket.send_json(stg)
+                except Exception:
+                    pass
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+    except Exception:
+        ws_manager.disconnect(websocket)

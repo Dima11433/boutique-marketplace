@@ -1564,6 +1564,7 @@ async def msg_admin_panel(message: Message):
         inline_keyboard=[
             [InlineKeyboardButton(text="🖼 Управление баннерами (Фото/Видео/GIF)", callback_data="admin_banners_menu")],
             [InlineKeyboardButton(text="🌐 Управление сайтом MODEVA (Товары, ТП, Домен)", callback_data="admin_site_manage_menu")],
+            [InlineKeyboardButton(text="🚚 Управление 3D-доставкой (Live трекинг)", callback_data="admin_delivery_tracking_menu")],
             [InlineKeyboardButton(text="👥 Управление персоналом (Роли)", callback_data="admin_roles_menu")],
             [InlineKeyboardButton(text="🔗 Настройки ссылок (Чат, Профиты, Магазины)", callback_data="admin_links_menu")],
             [InlineKeyboardButton(text="📢 Канал выкладки профитов", callback_data="admin_profit_channel_menu")],
@@ -1928,6 +1929,7 @@ async def cb_admin_back_main(callback: CallbackQuery, state: FSMContext = None):
         inline_keyboard=[
             [InlineKeyboardButton(text="🖼 Управление баннерами (Фото/Видео/GIF)", callback_data="admin_banners_menu")],
             [InlineKeyboardButton(text="🌐 Управление сайтом MODEVA (Товары, ТП, Домен)", callback_data="admin_site_manage_menu")],
+            [InlineKeyboardButton(text="🚚 Управление 3D-доставкой (Live трекинг)", callback_data="admin_delivery_tracking_menu")],
             [InlineKeyboardButton(text="👥 Управление персоналом (Роли)", callback_data="admin_roles_menu")],
             [InlineKeyboardButton(text="🔗 Настройки ссылок (Чат, Профиты, Магазины)", callback_data="admin_links_menu")],
             [InlineKeyboardButton(text="📢 Канал выкладки профитов", callback_data="admin_profit_channel_menu")],
@@ -1943,6 +1945,141 @@ async def cb_admin_back_main(callback: CallbackQuery, state: FSMContext = None):
         f"💰 Оборот магазина: <b>{stats['total_volume']:,.0f} ₽</b>\n"
         f"💸 Заявок на вывод: <b>{stats['pending_withdrawals']}</b>"
     )
+    try:
+        await callback.message.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=kb)
+    except Exception:
+        await callback.message.answer(text, parse_mode=ParseMode.HTML, reply_markup=kb)
+    await callback.answer()
+
+
+# --- 🚚 УПРАВЛЕНИЕ 3D ИНТЕРАКТИВНЫМ ТРЕКИНГОМ ДОСТАВКИ (4 ЭТАПА) ---
+
+@dp.callback_query(F.data == "admin_delivery_tracking_menu")
+@dp.callback_query(F.data.startswith("adm_deliv_track_ord_"))
+async def cb_admin_delivery_tracking_menu(callback: CallbackQuery, state: FSMContext = None):
+    if state:
+        await state.clear()
+    worker = await db.get_worker_by_tg(callback.from_user.id)
+    if not is_admin(callback.from_user.id, worker):
+        await callback.answer("Доступ запрещен.", show_alert=True)
+        return
+
+    order_num = "GLOBAL"
+    if callback.data and callback.data.startswith("adm_deliv_track_ord_"):
+        order_num = callback.data.replace("adm_deliv_track_ord_", "").strip()
+
+    stage_data = await db.get_delivery_stage(order_num)
+    cur_stage = stage_data.get("current_stage", 1)
+
+    s1_mark = "🟢 " if cur_stage == 1 else ""
+    s2_mark = "🟢 " if cur_stage == 2 else ""
+    s3_mark = "🟢 " if cur_stage == 3 else ""
+    s4_mark = "🟢 " if cur_stage == 4 else ""
+
+    site_domain = await db.get_bot_setting("site_domain", config.DOMAINS[0])
+    tracking_url = f"{site_domain.rstrip('/')}/tracking"
+    if order_num != "GLOBAL":
+        tracking_url += f"?order={order_num}"
+
+    text = (
+        "🚚 <b>Управление Live 3D-трекингом доставки MODEVA</b>\n\n"
+        f"📦 <b>Заказ:</b> <code>#{order_num}</code>\n"
+        f"📍 <b>Текущий этап:</b> <b>[{cur_stage}/4] {stage_data['stage_name']}</b>\n"
+        f"✨ <i>«{stage_data['stage_subtitle']}»</i>\n\n"
+        f"📝 <b>Описание этапа для клиента:</b>\n"
+        f"<i>{stage_data['stage_desc']}</i>\n\n"
+        "⚡️ <b>Нажмите кнопку ниже для моментального переключения:</b>\n"
+        "<i>Камера и 3D-анимация на сайте у клиента плавно перелетят к выбранной локации через WebSockets без перезагрузки страницы!</i>"
+    )
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=f"{s1_mark}🏢 1. На складе", callback_data=f"adm_set_stage_1_{order_num}")],
+            [InlineKeyboardButton(text=f"{s2_mark}📦 2. Погружено", callback_data=f"adm_set_stage_2_{order_num}")],
+            [InlineKeyboardButton(text=f"{s3_mark}🛣 3. В пути", callback_data=f"adm_set_stage_3_{order_num}")],
+            [InlineKeyboardButton(text=f"{s4_mark}📍 4. Товар прибыл", callback_data=f"adm_set_stage_4_{order_num}")],
+            [InlineKeyboardButton(text="📋 Выбрать другой заказ", callback_data="adm_delivery_select_order")],
+            [InlineKeyboardButton(text="🌐 Открыть 3D-схему на сайте", url=tracking_url)],
+            [InlineKeyboardButton(text="◀️ Назад в админку", callback_data="admin_back_main")]
+        ]
+    )
+
+    try:
+        await callback.message.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=kb)
+    except Exception:
+        await callback.message.answer(text, parse_mode=ParseMode.HTML, reply_markup=kb)
+    await callback.answer()
+
+
+@dp.callback_query(F.data.startswith("adm_set_stage_"))
+async def cb_adm_set_delivery_stage(callback: CallbackQuery):
+    worker = await db.get_worker_by_tg(callback.from_user.id)
+    if not is_admin(callback.from_user.id, worker):
+        await callback.answer("Доступ запрещен.", show_alert=True)
+        return
+
+    # Data format: adm_set_stage_{stage}_{order_num}
+    parts = callback.data.split("_")
+    stage_num = int(parts[3])
+    order_num = "_".join(parts[4:]) if len(parts) > 4 else "GLOBAL"
+
+    stage_data = await db.set_delivery_stage(stage_num, order_num)
+
+    # 1. Local broadcast if web running in same process
+    try:
+        from web import broadcast_delivery_update
+        await broadcast_delivery_update(stage_data)
+    except Exception:
+        pass
+
+    # 2. HTTP POST broadcast to live site (Render web service)
+    site_domain = (await db.get_bot_setting("site_domain", config.DOMAINS[0])).rstrip("/")
+    if site_domain:
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=4.0) as client:
+                await client.post(
+                    f"{site_domain}/api/internal/delivery-stage",
+                    json={"stage": stage_num, "order_number": order_num}
+                )
+        except Exception as e:
+            logger.warning(f"Failed to notify web internal delivery endpoint: {e}")
+
+    await callback.answer(f"✅ Этап переключен: «{stage_data['name']}»! Камера на сайте переведена.", show_alert=True)
+
+    # Re-render menu with new checkmark
+    callback.data = f"adm_deliv_track_ord_{order_num}"
+    await cb_admin_delivery_tracking_menu(callback)
+
+
+@dp.callback_query(F.data == "adm_delivery_select_order")
+async def cb_adm_delivery_select_order(callback: CallbackQuery):
+    worker = await db.get_worker_by_tg(callback.from_user.id)
+    if not is_admin(callback.from_user.id, worker):
+        await callback.answer("Доступ запрещен.", show_alert=True)
+        return
+
+    orders = await db.get_recent_orders_for_tracking(limit=8)
+
+    kb_rows = [
+        [InlineKeyboardButton(text="🌐 Глобальный трекинг витрины (По умолчанию)", callback_data="adm_deliv_track_ord_GLOBAL")]
+    ]
+
+    stage_names = {1: "Склад", 2: "Погружено", 3: "В пути", 4: "Прибыл"}
+    for o in orders:
+        stg = o.get("delivery_stage", 1)
+        stg_lbl = stage_names.get(stg, str(stg))
+        btn_text = f"#{o['order_number']} • {o['client_name'][:12]} [{stg_lbl}]"
+        kb_rows.append([InlineKeyboardButton(text=btn_text, callback_data=f"adm_deliv_track_ord_{o['order_number']}")])
+
+    kb_rows.append([InlineKeyboardButton(text="◀️ Назад к трекингу", callback_data="admin_delivery_tracking_menu")])
+
+    text = (
+        "📋 <b>Выберите заказ для управления доставкой:</b>\n\n"
+        "Вы можете управлять как общим демонстрационным трекингом на сайте, так и персональной доставкой конкретного покупателя."
+    )
+
+    kb = InlineKeyboardMarkup(inline_keyboard=kb_rows)
     try:
         await callback.message.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=kb)
     except Exception:
@@ -2990,6 +3127,22 @@ async def handle_internal_catalog(request: web.Request):
     return web.json_response({"status": "ok", "products": products})
 
 
+async def handle_internal_delivery_stage(request: web.Request):
+    if request.method == "POST":
+        try:
+            data = await request.json()
+            stage = int(data.get("stage", 1))
+            order_num = data.get("order_number", "GLOBAL")
+            res = await db.set_delivery_stage(stage, order_num)
+            return web.json_response({"status": "ok", "delivery": res})
+        except Exception as e:
+            return web.json_response({"status": "error", "message": str(e)}, status=400)
+    else:
+        order_num = request.query.get("order", "GLOBAL")
+        res = await db.get_delivery_stage(order_num)
+        return web.json_response({"status": "ok", "delivery": res})
+
+
 # --- Runner ---
 async def start_bot():
     logger.info("Initializing database...")
@@ -3011,6 +3164,8 @@ async def start_bot():
     web_app.router.add_get("/api/internal/promo", handle_internal_promo)
     web_app.router.add_get("/api/internal/settings", handle_internal_settings)
     web_app.router.add_get("/api/internal/catalog", handle_internal_catalog)
+    web_app.router.add_get("/api/internal/delivery-stage", handle_internal_delivery_stage)
+    web_app.router.add_post("/api/internal/delivery-stage", handle_internal_delivery_stage)
     web_app.router.add_post("/api/internal/order", handle_internal_order)
     web_app.router.add_post("/api/internal/action-log", handle_internal_action_log)
     web_app.router.add_static("/static", path=BASE_STATIC_DIR)

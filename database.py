@@ -222,6 +222,31 @@ async def init_db():
         );
         """)
 
+        # Delivery tracking table for real-time 3D delivery scheme
+        await db.execute("""
+        CREATE TABLE IF NOT EXISTS delivery_tracking (
+            order_number TEXT PRIMARY KEY,
+            current_stage INTEGER DEFAULT 1,
+            stage_name TEXT DEFAULT 'На складе',
+            stage_subtitle TEXT DEFAULT 'Комплектация и фирменная упаковка',
+            stage_desc TEXT DEFAULT 'Заказ бережно упакован в фирменный пыльник и премиальный бокс MODEVA. Проведена экспертная проверка подлинности и опломбировка.',
+            carrier TEXT DEFAULT 'MODEVA Luxury Courier',
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+
+        try:
+            await db.execute("ALTER TABLE orders ADD COLUMN delivery_stage INTEGER DEFAULT 1")
+        except Exception:
+            pass
+
+        # Insert default GLOBAL tracking row
+        await db.execute("""
+            INSERT INTO delivery_tracking (order_number, current_stage, stage_name, stage_subtitle, stage_desc)
+            VALUES ('GLOBAL', 1, 'На складе', 'Комплектация и фирменная упаковка', 'Заказ бережно упакован в фирменный пыльник и премиальный бокс MODEVA. Проведена экспертная проверка подлинности и опломбировка.')
+            ON CONFLICT(order_number) DO NOTHING
+        """)
+
         default_settings = {
             "chat_url": config.DEFAULT_CHAT_URL,
             "profits_url": config.DEFAULT_PROFITS_URL,
@@ -233,7 +258,8 @@ async def init_db():
             "site_name": "MODEVA",
             "site_hero_title": "Не просто маркетплейс, a MODEVA — стиль вне времени",
             "site_hero_subtitle": "Ваш надёжный посредник с продавцом.",
-            "site_domain": config.DOMAINS[0]
+            "site_domain": config.DOMAINS[0],
+            "default_delivery_stage": "1"
         }
         for k, v in default_settings.items():
             await db.execute("""
@@ -1079,3 +1105,121 @@ async def get_site_settings() -> dict:
         "manual_url": settings.get("manual_url", config.MANUAL_URL),
         "profits_channel_id": settings.get("profits_channel_id", "")
     }
+
+
+# --- 🚚 3D Interactive Delivery Tracking System ---
+
+DELIVERY_STAGES = {
+    1: {
+        "stage": 1,
+        "key": "warehouse",
+        "name": "На складе",
+        "subtitle": "Комплектация и фирменная упаковка",
+        "desc": "Заказ бережно упакован в фирменный пыльник и премиальный бокс MODEVA. Проведена экспертная проверка подлинности и опломбировка."
+    },
+    2: {
+        "stage": 2,
+        "key": "loaded",
+        "name": "Погружено",
+        "subtitle": "Передано в логистический хаб",
+        "desc": "Груз передан в зону отгрузки и загружен в спецтранспорт курьерской службы. Товар готов к отправке."
+    },
+    3: {
+        "stage": 3,
+        "key": "in_transit",
+        "name": "В пути",
+        "subtitle": "Экспресс-доставка по маршруту",
+        "desc": "Курьерский транспорт движется по маршруту следования. Осуществляется непрерывный спутниковый GPS-мониторинг доставки."
+    },
+    4: {
+        "stage": 4,
+        "key": "delivered",
+        "name": "Товар прибыл",
+        "subtitle": "Доставлен в пункт назначения",
+        "desc": "Заказ успешно доставлен в бутик / пункт выдачи MODEVA. Ожидает вручения клиенту с возможностью примерки."
+    }
+}
+
+
+async def set_delivery_stage(stage: int, order_number: str = "GLOBAL") -> dict:
+    stage = max(1, min(4, int(stage)))
+    cfg = DELIVERY_STAGES[stage]
+    order_num = (order_number or "GLOBAL").strip().upper()
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("""
+            INSERT INTO delivery_tracking (order_number, current_stage, stage_name, stage_subtitle, stage_desc, updated_at)
+            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(order_number) DO UPDATE SET
+                current_stage = excluded.current_stage,
+                stage_name = excluded.stage_name,
+                stage_subtitle = excluded.stage_subtitle,
+                stage_desc = excluded.stage_desc,
+                updated_at = CURRENT_TIMESTAMP
+        """, (order_num, stage, cfg["name"], cfg["subtitle"], cfg["desc"]))
+
+        # Also update orders table if this is a real order
+        if order_num != "GLOBAL":
+            await db.execute("UPDATE orders SET delivery_stage = ? WHERE order_number = ?", (stage, order_num))
+
+        # Update default in bot_settings
+        await db.execute("""
+            INSERT INTO bot_settings (key, value) VALUES ('default_delivery_stage', ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        """, (str(stage),))
+
+        await db.commit()
+
+    return {
+        "order_number": order_num,
+        "stage": stage,
+        "key": cfg["key"],
+        "name": cfg["name"],
+        "subtitle": cfg["subtitle"],
+        "desc": cfg["desc"]
+    }
+
+
+async def get_delivery_stage(order_number: str = "GLOBAL") -> dict:
+    order_num = (order_number or "GLOBAL").strip().upper()
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT * FROM delivery_tracking WHERE order_number = ?", (order_num,)) as cur:
+            row = await cur.fetchone()
+            if not row and order_num != "GLOBAL":
+                async with db.execute("SELECT * FROM delivery_tracking WHERE order_number = 'GLOBAL'") as cur2:
+                    row = await cur2.fetchone()
+
+        if row:
+            d = dict(row)
+            stg = d.get("current_stage", 1)
+            cfg = DELIVERY_STAGES.get(stg, DELIVERY_STAGES[1])
+            d["stage"] = stg
+            d["key"] = cfg["key"]
+            return d
+
+    cfg = DELIVERY_STAGES[1]
+    return {
+        "order_number": order_num,
+        "stage": 1,
+        "current_stage": 1,
+        "key": cfg["key"],
+        "stage_name": cfg["name"],
+        "stage_subtitle": cfg["subtitle"],
+        "stage_desc": cfg["desc"],
+        "carrier": "MODEVA Luxury Courier"
+    }
+
+
+async def get_recent_orders_for_tracking(limit: int = 8) -> list:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("""
+            SELECT id, order_number, product_title, client_name, client_phone, final_price, 
+                   COALESCE(delivery_stage, 1) as delivery_stage, created_at
+            FROM orders
+            ORDER BY id DESC
+            LIMIT ?
+        """, (limit,)) as cur:
+            rows = await cur.fetchall()
+            return [dict(r) for r in rows]
