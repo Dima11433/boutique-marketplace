@@ -90,6 +90,10 @@ class AdminReplyState(StatesGroup):
     waiting_for_reply_text = State()
 
 
+class SupportChatReplyState(StatesGroup):
+    waiting_for_reply = State()
+
+
 class AdminRoleState(StatesGroup):
     waiting_for_user_query = State()
     waiting_for_role_selection = State()
@@ -1563,6 +1567,7 @@ async def msg_admin_panel(message: Message):
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="🖼 Управление баннерами (Фото/Видео/GIF)", callback_data="admin_banners_menu")],
+            [InlineKeyboardButton(text="💬 Онлайн-поддержка на сайте (Live-чаты)", callback_data="admin_support_chats_menu")],
             [InlineKeyboardButton(text="🌐 Управление сайтом MODEVA (Товары, ТП, Домен)", callback_data="admin_site_manage_menu")],
             [InlineKeyboardButton(text="🚚 Управление 3D-доставкой (Live трекинг)", callback_data="admin_delivery_tracking_menu")],
             [InlineKeyboardButton(text="👥 Управление персоналом (Роли)", callback_data="admin_roles_menu")],
@@ -1928,6 +1933,7 @@ async def cb_admin_back_main(callback: CallbackQuery, state: FSMContext = None):
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="🖼 Управление баннерами (Фото/Видео/GIF)", callback_data="admin_banners_menu")],
+            [InlineKeyboardButton(text="💬 Онлайн-поддержка на сайте (Live-чаты)", callback_data="admin_support_chats_menu")],
             [InlineKeyboardButton(text="🌐 Управление сайтом MODEVA (Товары, ТП, Домен)", callback_data="admin_site_manage_menu")],
             [InlineKeyboardButton(text="🚚 Управление 3D-доставкой (Live трекинг)", callback_data="admin_delivery_tracking_menu")],
             [InlineKeyboardButton(text="👥 Управление персоналом (Роли)", callback_data="admin_roles_menu")],
@@ -2085,6 +2091,231 @@ async def cb_adm_delivery_select_order(callback: CallbackQuery):
     except Exception:
         await callback.message.answer(text, parse_mode=ParseMode.HTML, reply_markup=kb)
     await callback.answer()
+
+
+# --- 💬 ОНЛАЙН-ПОДДЕРЖКА НА САЙТЕ (УПРАВЛЕНИЕ ЧАТАМИ ИЗ TELEGRAM) ---
+
+@dp.callback_query(F.data == "admin_support_chats_menu")
+@dp.message(Command("support_chats"))
+async def cb_admin_support_chats_menu(event: types.TelegramObject, state: FSMContext = None):
+    if state:
+        await state.clear()
+    user_id = event.from_user.id
+    worker = await db.get_worker_by_tg(user_id)
+    if not is_admin(user_id, worker):
+        if isinstance(event, CallbackQuery):
+            await event.answer("Доступ запрещен.", show_alert=True)
+        else:
+            await event.answer("Доступ запрещен.")
+        return
+
+    sessions = await db.get_recent_support_sessions(limit=15)
+    if not sessions:
+        text = (
+            "💬 <b>Онлайн-поддержка на сайте MODEVA</b>\n\n"
+            "Активных диалогов с покупателями пока нет.\n"
+            "Когда клиент напишет в онлайн-чат на сайте, сюда придёт мгновенное уведомление с кнопкой быстрого ответа!"
+        )
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="🔄 Обновить список", callback_data="admin_support_chats_menu")],
+                [InlineKeyboardButton(text="◀️ Назад в админку", callback_data="admin_back_main")]
+            ]
+        )
+    else:
+        text = (
+            "💬 <b>Онлайн-поддержка на сайте MODEVA</b>\n\n"
+            f"Всего активных диалогов: <b>{len(sessions)}</b>\n\n"
+            "<i>Выберите диалог для просмотра истории и ответа клиенту:</i>"
+        )
+        buttons = []
+        for s in sessions:
+            sid = s.get("session_id", "")
+            cname = s.get("client_name") or "Покупатель"
+            unread = "🔴 " if s.get("unread_count", 0) > 0 else "🟢 "
+            last_msg = (s.get("last_message") or "")[:24]
+            btn_label = f"{unread}{cname}: {last_msg}..."
+            buttons.append([InlineKeyboardButton(text=btn_label, callback_data=f"adm_view_chat_{sid}")])
+
+        buttons.append([InlineKeyboardButton(text="🔄 Обновить список", callback_data="admin_support_chats_menu")])
+        buttons.append([InlineKeyboardButton(text="◀️ Назад в админку", callback_data="admin_back_main")])
+        kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+
+    if isinstance(event, CallbackQuery):
+        try:
+            await event.message.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=kb)
+        except Exception:
+            await event.message.answer(text, parse_mode=ParseMode.HTML, reply_markup=kb)
+        await event.answer()
+    else:
+        await event.answer(text, parse_mode=ParseMode.HTML, reply_markup=kb)
+
+
+@dp.callback_query(F.data.startswith("adm_view_chat_"))
+async def cb_adm_view_chat(callback: CallbackQuery):
+    worker = await db.get_worker_by_tg(callback.from_user.id)
+    if not is_admin(callback.from_user.id, worker):
+        await callback.answer("Доступ запрещен.", show_alert=True)
+        return
+
+    session_id = callback.data.replace("adm_view_chat_", "").strip()
+    messages = await db.get_support_messages(session_id)
+    await db.mark_support_messages_read(session_id)
+
+    chat_log = []
+    client_name = "Покупатель"
+    for m in messages[-10:]:
+        sender = m.get("sender")
+        if sender == "client":
+            c_name = m.get("client_name") or "Клиент"
+            client_name = c_name
+            chat_log.append(f"👤 <b>{c_name}:</b> {m.get('message')}")
+        else:
+            mgr = m.get("client_name") or "Консьерж"
+            chat_log.append(f"👔 <b>{mgr}:</b> {m.get('message')}")
+
+    chat_preview = "\n".join(chat_log) if chat_log else "<i>История сообщений пуста</i>"
+    text = (
+        f"💬 <b>Диалог: {client_name}</b>\n\n"
+        f"🆔 <b>Сессия:</b> <code>{session_id}</code>\n\n"
+        f"📜 <b>Последние сообщения:</b>\n{chat_preview}\n\n"
+        f"✍️ <i>Для ответа нажмите кнопку ниже или введите:</i>\n"
+        f"<code>/reply {session_id} текст_ответа</code>"
+    )
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✉️ Написать ответ клиенту", callback_data=f"sup_reply:{session_id}")],
+            [InlineKeyboardButton(text="🔄 Обновить переписку", callback_data=f"adm_view_chat_{session_id}")],
+            [InlineKeyboardButton(text="◀️ Назад к списку чатов", callback_data="admin_support_chats_menu")]
+        ]
+    )
+
+    try:
+        await callback.message.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=kb)
+    except Exception:
+        await callback.message.answer(text, parse_mode=ParseMode.HTML, reply_markup=kb)
+    await callback.answer()
+
+
+@dp.callback_query(F.data.startswith("sup_reply:"))
+async def cb_sup_reply(callback: CallbackQuery, state: FSMContext):
+    session_id = callback.data.split(":", 1)[1].strip()
+    await state.set_state(SupportChatReplyState.waiting_for_reply)
+    await state.update_data(session_id=session_id)
+
+    await callback.message.answer(
+        f"💬 <b>Ответ в онлайн-чат поддержки на сайте</b>\n\n"
+        f"🆔 <b>Сессия клиента:</b> <code>{session_id}</code>\n\n"
+        f"✍️ <b>Напишите текст ответа покупателю следующим сообщением:</b>",
+        parse_mode=ParseMode.HTML
+    )
+    await callback.answer()
+
+
+@dp.message(SupportChatReplyState.waiting_for_reply)
+async def msg_process_support_reply(message: Message, state: FSMContext):
+    data = await state.get_data()
+    session_id = data.get("session_id")
+    await state.clear()
+
+    reply_text = message.text.strip()
+    if not reply_text:
+        await message.answer("Сообщение не может быть пустым.")
+        return
+
+    mgr_name = f"Консьерж {message.from_user.first_name or 'MODEVA'}"
+    saved = await db.save_support_message(
+        session_id=session_id,
+        sender="support",
+        message=reply_text,
+        client_name=mgr_name
+    )
+
+    # 1. Local broadcast
+    try:
+        from web import broadcast_support_message
+        await broadcast_support_message(saved)
+    except Exception:
+        pass
+
+    # 2. HTTP POST broadcast to Render web service
+    site_domain = (await db.get_bot_setting("site_domain", config.DOMAINS[0])).rstrip("/")
+    if site_domain:
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=4.0) as client:
+                await client.post(
+                    f"{site_domain}/api/internal/support/reply",
+                    json={"session_id": session_id, "message": reply_text, "manager_name": mgr_name}
+                )
+        except Exception as e:
+            logger.warning(f"Error posting support reply to web service: {e}")
+
+    await message.answer(
+        f"✅ <b>Ответ моментально отправлен клиенту в онлайн-чат на сайте!</b>\n\n"
+        f"🆔 <b>Сессия:</b> <code>{session_id}</code>\n"
+        f"✉️ <i>«{reply_text}»</i>",
+        parse_mode=ParseMode.HTML,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="💬 К списку чатов", callback_data="admin_support_chats_menu")]
+        ])
+    )
+
+
+@dp.message(Command("reply"))
+@dp.message(Command("r"))
+async def cmd_quick_support_reply(message: Message):
+    worker = await db.get_worker_by_tg(message.from_user.id)
+    if not is_admin(message.from_user.id, worker):
+        return
+
+    parts = message.text.split(maxsplit=2)
+    if len(parts) < 3:
+        await message.answer(
+            "ℹ️ <b>Формат команды ответа в чат на сайте:</b>\n"
+            "<code>/reply session_id текст_ответа</code>\n\n"
+            "<i>Пример:</i>\n"
+            "<code>/reply f3a1-bc42 Здравствуйте! Ваш заказ передан курьеру.</code>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    session_id = parts[1].strip()
+    reply_text = parts[2].strip()
+    mgr_name = f"Консьерж {message.from_user.first_name or 'MODEVA'}"
+
+    saved = await db.save_support_message(
+        session_id=session_id,
+        sender="support",
+        message=reply_text,
+        client_name=mgr_name
+    )
+
+    try:
+        from web import broadcast_support_message
+        await broadcast_support_message(saved)
+    except Exception:
+        pass
+
+    site_domain = (await db.get_bot_setting("site_domain", config.DOMAINS[0])).rstrip("/")
+    if site_domain:
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=4.0) as client:
+                await client.post(
+                    f"{site_domain}/api/internal/support/reply",
+                    json={"session_id": session_id, "message": reply_text, "manager_name": mgr_name}
+                )
+        except Exception as e:
+            logger.warning(f"Error posting support reply to web service: {e}")
+
+    await message.answer(
+        f"✅ <b>Ответ моментально доставлен клиенту на сайт!</b>\n\n"
+        f"🆔 <b>Сессия:</b> <code>{session_id}</code>\n"
+        f"✉️ <i>«{reply_text}»</i>",
+        parse_mode=ParseMode.HTML
+    )
 
 
 # --- 🌐 ПОЛНОЕ УПРАВЛЕНИЕ САЙТОМ MODEVA (ТОВАРЫ, ТЕХПОДДЕРЖКА, БРЕНД, ДОМЕН) ---

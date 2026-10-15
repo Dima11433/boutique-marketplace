@@ -167,9 +167,9 @@
                 <a href="/" class="btn btn-outline-sm">
                     ◀️ В каталог
                 </a>
-                <a href="https://t.me/{{ (support_username|default('@kristiq_q')).lstrip('@') }}" target="_blank" class="btn btn-outline-sm support-header-btn" title="Связаться с техподдержкой">
-                    💬 Поддержка 24/7
-                </a>
+                <button type="button" class="btn btn-outline-sm support-header-btn" onclick="openModevaSupport()" title="Онлайн-поддержка на сайте 24/7">
+                    💬 Поддержка
+                </button>
             </div>
         </div>
     </header>
@@ -250,5 +250,7 @@
             }
         }
     </script>
+    <!-- 💬 MODEVA Luxury Live Support Concierge Widget Included Here -->
+    {% include "components/support_chat.html" %}
 </body>
 </html>

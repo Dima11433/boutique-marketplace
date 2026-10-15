@@ -75,6 +75,19 @@ async def broadcast_delivery_update(stage_data: dict):
     # 2. Emit via native websockets
     await ws_manager.broadcast(stage_data)
 
+async def broadcast_support_message(msg_data: dict):
+    # 1. Emit via socket.io
+    try:
+        await sio.emit("support_message", msg_data)
+    except Exception as e:
+        logger.warning(f"Error emitting support message via socketio: {e}")
+
+    # 2. Emit via native websockets
+    await ws_manager.broadcast({
+        "type": "support_message",
+        "data": msg_data
+    })
+
 @sio.event
 async def connect(sid, environ):
     stage = await db.get_delivery_stage("GLOBAL")
@@ -122,6 +135,19 @@ class ActionLogRequest(BaseModel):
 class DeliveryStageUpdateRequest(BaseModel):
     stage: int
     order_number: Optional[str] = "GLOBAL"
+
+
+class SupportMessageRequest(BaseModel):
+    session_id: str
+    message: str
+    client_name: Optional[str] = "Покупатель"
+    client_phone: Optional[str] = ""
+
+
+class SupportReplyRequest(BaseModel):
+    session_id: str
+    message: str
+    manager_name: Optional[str] = "Консьерж MODEVA"
 
 
 # --- Routes ---
@@ -555,3 +581,125 @@ async def websocket_tracking(websocket: WebSocket, order_number: Optional[str] =
         ws_manager.disconnect(websocket)
     except Exception:
         ws_manager.disconnect(websocket)
+
+
+# --- 💬 On-Site Live Support Chat Endpoints ---
+
+@app.post("/api/support/message")
+async def api_send_support_message(data: SupportMessageRequest):
+    session_id = data.session_id.strip()
+    msg_text = data.message.strip()
+    if not msg_text:
+        raise HTTPException(status_code=400, detail="Сообщение не может быть пустым")
+
+    # 1. Save client message
+    saved_msg = await db.save_support_message(
+        session_id=session_id,
+        sender="client",
+        message=msg_text,
+        client_name=data.client_name,
+        client_phone=data.client_phone
+    )
+
+    # 2. Real-time broadcast
+    await broadcast_support_message(saved_msg)
+
+    # 3. Notify Telegram Bot / Channel
+    try:
+        user_info = f"<b>{data.client_name}</b>"
+        if data.client_phone:
+            user_info += f" (📱 <code>{data.client_phone}</code>)"
+
+        tg_text = (
+            f"💬 <b>НОВОЕ ОБРАЩЕНИЕ В ОНЛАЙН-ПОДДЕРЖКУ НА САЙТЕ</b>\n\n"
+            f"👤 <b>Покупатель:</b> {user_info}\n"
+            f"🆔 <b>Сессия диалога:</b> <code>{session_id}</code>\n"
+            f"✉️ <b>Сообщение:</b>\n<i>«{msg_text}»</i>\n\n"
+            f"✍️ <i>Для ответа клиенту на сайте отправьте команду:</i>\n"
+            f"<code>/reply {session_id} ваш_ответ</code>"
+        )
+        reply_kb = None
+        try:
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            reply_kb = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="💬 Ответить клиенту на сайте", callback_data=f"sup_reply:{session_id}")],
+                    [InlineKeyboardButton(text="📋 Все онлайн-чаты", callback_data="admin_support_chats_menu")]
+                ]
+            )
+        except Exception:
+            pass
+
+        await log_to_channel(tg_text, reply_markup=reply_kb)
+        # Notify admins directly
+        for admin_id in config.ADMIN_IDS:
+            try:
+                await notify_worker(admin_id, tg_text, reply_markup=reply_kb)
+            except Exception:
+                pass
+    except Exception as e:
+        logger.warning(f"Error notifying telegram about support message: {e}")
+
+    # 4. Instant Smart Concierge Assistance (if manager hasn't replied yet)
+    lowered = msg_text.lower()
+    auto_reply = None
+    if any(k in lowered for k in ["заказ", "доставк", "где", "трек", "статус"]):
+        stg = await db.get_delivery_stage("GLOBAL")
+        auto_reply = (
+            f"Здравствуйте, {data.client_name}! Вы можете отслеживать перемещение вашего заказа в интерактивном 3D-трекинге на сайте. "
+            f"Текущий этап: «{stg.get('stage_name', 'В обработке')}» ({stg.get('stage_subtitle', '')}). "
+            f"Курьерская служба: {stg.get('carrier', 'MODEVA White Glove')}."
+        )
+    elif any(k in lowered for k in ["промокод", "скидк", "бонус", "реферал", "код"]):
+        auto_reply = (
+            f"Здравствуйте! Для получения эксклюзивной скидки до 30% используйте промокод MODEVA-VIP при оформлении заказа или регистрации. "
+            f"Скидка рассчитывается моментально!"
+        )
+    elif any(k in lowered for k in ["оплат", "карт", "деньг", "гарант", "чек"]):
+        auto_reply = (
+            f"Каждая покупка в бутике MODEVA защищена гарантией подлинности и экспертной опломбировкой. "
+            f"Оплата происходит безопасно. Дежурный консьерж службы заботы уже подключен к диалогу!"
+        )
+
+    if auto_reply:
+        concierge_msg = await db.save_support_message(
+            session_id=session_id,
+            sender="support",
+            message=auto_reply,
+            client_name="Консьерж MODEVA"
+        )
+        await broadcast_support_message(concierge_msg)
+
+    return {"status": "ok", "message": saved_msg, "auto_reply": bool(auto_reply)}
+
+
+@app.get("/api/support/messages")
+async def api_get_support_messages(session_id: str):
+    if not session_id:
+        return {"status": "ok", "messages": []}
+    messages = await db.get_support_messages(session_id)
+    return {"status": "ok", "messages": messages}
+
+
+@app.post("/api/internal/support/reply")
+async def api_internal_support_reply(data: SupportReplyRequest):
+    session_id = data.session_id.strip()
+    msg_text = data.message.strip()
+    if not msg_text:
+        raise HTTPException(status_code=400, detail="Сообщение не может быть пустым")
+
+    saved_msg = await db.save_support_message(
+        session_id=session_id,
+        sender="support",
+        message=msg_text,
+        client_name=data.manager_name or "Консьерж MODEVA"
+    )
+    await broadcast_support_message(saved_msg)
+    return {"status": "ok", "message": saved_msg}
+
+
+@app.get("/api/internal/support/sessions")
+async def api_internal_support_sessions(limit: int = 20):
+    sessions = await db.get_recent_support_sessions(limit)
+    return {"status": "ok", "sessions": sessions}
+

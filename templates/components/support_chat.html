@@ -1,0 +1,853 @@
+<!-- 💬 MODEVA LUXURY LIVE SUPPORT CONCIERGE WIDGET (ON-SITE CHAT) -->
+<!-- Self-contained luxury client chat with real-time WebSocket & Telegram Bot bidirectional sync -->
+
+<div id="modevaSupportWidget" class="modeva-support-widget">
+    
+    <!-- Floating Concierge Trigger Button -->
+    <button id="supportTriggerBtn" class="support-trigger-btn" onclick="toggleSupportChat()" title="Служба заботы и онлайн-консьерж MODEVA 24/7">
+        <div class="trigger-avatar-wrap">
+            <div class="trigger-avatar">
+                <span>M</span>
+            </div>
+            <span class="trigger-online-dot"></span>
+        </div>
+        <div class="trigger-label">
+            <span class="trigger-title">Поддержка 24/7</span>
+            <span class="trigger-sub">Консьерж онлайн</span>
+        </div>
+        <span id="supportUnreadBadge" class="support-unread-badge" style="display: none;">1</span>
+    </button>
+
+    <!-- Luxury Live Chat Window -->
+    <div id="supportChatWindow" class="support-chat-window">
+        <!-- Chat Header -->
+        <div class="chat-header">
+            <div class="header-concierge-info">
+                <div class="concierge-avatar-box">
+                    <div class="concierge-avatar">M</div>
+                    <span class="online-indicator"></span>
+                </div>
+                <div class="concierge-meta">
+                    <h4 class="concierge-name">Служба заботы MODEVA</h4>
+                    <span class="concierge-status">Персональный консьерж • Ответ ~1 мин</span>
+                </div>
+            </div>
+
+            <div class="header-actions-group">
+                <button class="chat-header-btn" id="supportSoundBtn" onclick="toggleSupportSound()" title="Включить / выключить звук уведомлений">
+                    <span id="supportSoundIcon">🔔</span>
+                </button>
+                <button class="chat-header-btn chat-close-btn" onclick="toggleSupportChat()" title="Свернуть чат">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Order / Context Status Bar (if tracking or cart active) -->
+        <div class="chat-order-bar">
+            <span class="order-bar-dot"></span>
+            <span class="order-bar-text">🔒 Защищенный диалог с бутиком • Экспертная помощь</span>
+        </div>
+
+        <!-- Quick FAQ / Quick Action Chips -->
+        <div class="chat-quick-chips">
+            <button class="quick-chip" onclick="sendQuickSupportPrompt('Где мой заказ?')">🚚 Где мой заказ?</button>
+            <button class="quick-chip" onclick="sendQuickSupportPrompt('Как применить скидку по промокоду?')">💎 Скидка / Промокод</button>
+            <button class="quick-chip" onclick="sendQuickSupportPrompt('Гарантия подлинности и оплата')">🛡 Гарантия подлинности</button>
+            <button class="quick-chip" onclick="sendQuickSupportPrompt('Хочу проконсультироваться с живым менеджером')">👤 Позвать менеджера</button>
+        </div>
+
+        <!-- Chat Message Stream -->
+        <div class="chat-messages-container" id="chatMessagesContainer">
+            <!-- Initial Welcome Message from Concierge -->
+            <div class="chat-msg msg-support">
+                <div class="msg-avatar">M</div>
+                <div class="msg-bubble">
+                    <div class="msg-author">Консьерж MODEVA</div>
+                    <div class="msg-text">
+                        Здравствуйте! Добро пожаловать в консьерж-сервис MODEVA. 
+                        Я на связи 24/7 и готов помочь с выбором лота, проверкой подлинности, расчетом скидки или статусом доставки. Чем могу помочь?
+                    </div>
+                    <div class="msg-time" id="welcomeMsgTime">12:00</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Typing Indicator (hidden by default) -->
+        <div class="chat-typing-indicator" id="chatTypingIndicator" style="display: none;">
+            <div class="typing-bubble">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+            </div>
+            <span class="typing-label">Консьерж печатает...</span>
+        </div>
+
+        <!-- Chat Input Bar -->
+        <form class="chat-input-bar" id="supportChatForm" onsubmit="handleSupportSend(event)">
+            <input 
+                type="text" 
+                id="supportInput" 
+                class="support-input" 
+                placeholder="Напишите сообщение..." 
+                autocomplete="off"
+            >
+            <button type="submit" class="support-send-btn" id="supportSendBtn" title="Отправить">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            </button>
+        </form>
+    </div>
+</div>
+
+<style>
+/* --- 💬 MODEVA Luxury Live Support Widget Styles --- */
+
+.modeva-support-widget {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Floating Trigger Button */
+.support-trigger-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(135deg, #18191f 0%, #0d0e12 100%);
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    border-radius: 9999px;
+    padding: 8px 18px 8px 10px;
+    color: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), 0 0 20px rgba(212, 175, 55, 0.2);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    user-select: none;
+}
+
+.support-trigger-btn:hover {
+    transform: translateY(-3px) scale(1.02);
+    border-color: #d4af37;
+    box-shadow: 0 16px 42px rgba(0, 0, 0, 0.6), 0 0 28px rgba(212, 175, 55, 0.35);
+}
+
+.trigger-avatar-wrap {
+    position: relative;
+    width: 38px;
+    height: 38px;
+}
+
+.trigger-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #d4af37, #937119);
+    color: #0b0c10;
+    font-weight: 800;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.trigger-online-dot {
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 11px;
+    height: 11px;
+    background: #10b981;
+    border: 2px solid #0d0e12;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #10b981;
+    animation: supPulse 1.8s infinite ease-in-out;
+}
+
+@keyframes supPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(0.85); opacity: 0.4; }
+}
+
+.trigger-label {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+.trigger-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+    color: #ffffff;
+}
+
+.trigger-sub {
+    font-size: 11px;
+    color: #d4af37;
+    font-weight: 500;
+}
+
+.support-unread-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #0d0e12;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.5);
+    animation: supBounce 0.5s ease;
+}
+
+@keyframes supBounce {
+    0% { transform: scale(0); }
+    70% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+/* Luxury Chat Window */
+.support-chat-window {
+    position: fixed;
+    bottom: 86px;
+    right: 24px;
+    width: 380px;
+    max-width: calc(100vw - 32px);
+    height: 580px;
+    max-height: calc(100vh - 110px);
+    background: #11131a;
+    background: radial-gradient(circle at 85% 15%, #242634 0%, #11131a 70%);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 24px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.65), 0 0 30px rgba(212, 175, 55, 0.15);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    transform-origin: bottom right;
+    animation: chatOpen 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 10000;
+}
+
+.support-chat-window.open {
+    display: flex;
+}
+
+@keyframes chatOpen {
+    from {
+        opacity: 0;
+        transform: scale(0.92) translateY(14px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Header */
+.chat-header {
+    padding: 16px 20px;
+    background: rgba(14, 16, 23, 0.85);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.header-concierge-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.concierge-avatar-box {
+    position: relative;
+}
+
+.concierge-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #d4af37, #937119);
+    color: #0b0c10;
+    font-weight: 800;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 12px rgba(212, 175, 55, 0.3);
+}
+
+.online-indicator {
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #10b981;
+    border: 2px solid #11131a;
+    box-shadow: 0 0 6px #10b981;
+}
+
+.concierge-meta {
+    display: flex;
+    flex-direction: column;
+}
+
+.concierge-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0;
+}
+
+.concierge-status {
+    font-size: 11px;
+    color: #94a3b8;
+}
+
+.header-actions-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.chat-header-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #e2e8f0;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.chat-header-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    transform: scale(1.05);
+}
+
+.chat-close-btn:hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #ef4444;
+}
+
+/* Order bar */
+.chat-order-bar {
+    background: rgba(212, 175, 55, 0.08);
+    border-bottom: 1px solid rgba(212, 175, 55, 0.18);
+    padding: 7px 16px;
+    font-size: 11px;
+    color: #e6ca65;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+}
+
+.order-bar-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #d4af37;
+    box-shadow: 0 0 6px #d4af37;
+}
+
+/* Quick Chips */
+.chat-quick-chips {
+    padding: 10px 14px;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    white-space: nowrap;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    scrollbar-width: none;
+}
+
+.chat-quick-chips::-webkit-scrollbar {
+    display: none;
+}
+
+.quick-chip {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 100px;
+    padding: 5px 12px;
+    font-size: 11px;
+    color: #cbd5e1;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.quick-chip:hover {
+    background: rgba(212, 175, 55, 0.18);
+    border-color: rgba(212, 175, 55, 0.45);
+    color: #fef08a;
+    transform: translateY(-1px);
+}
+
+/* Message stream */
+.chat-messages-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: rgba(10, 11, 16, 0.35);
+}
+
+.chat-msg {
+    display: flex;
+    gap: 8px;
+    max-width: 86%;
+    animation: msgIn 0.25s ease-out;
+}
+
+@keyframes msgIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.chat-msg.msg-support {
+    align-self: flex-start;
+}
+
+.chat-msg.msg-client {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+.msg-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #d4af37, #937119);
+    color: #0b0c10;
+    font-weight: 700;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.msg-bubble {
+    border-radius: 18px;
+    padding: 10px 14px;
+    font-size: 13px;
+    line-height: 1.45;
+    position: relative;
+    word-break: break-word;
+}
+
+.msg-support .msg-bubble {
+    background: #1b1e2a;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #f1f5f9;
+    border-top-left-radius: 4px;
+}
+
+.msg-client .msg-bubble {
+    background: linear-gradient(135deg, #2a2c38 0%, #1b1d28 100%);
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    color: #ffffff;
+    border-top-right-radius: 4px;
+}
+
+.msg-author {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #d4af37;
+    margin-bottom: 3px;
+}
+
+.msg-time {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.45);
+    margin-top: 4px;
+    text-align: right;
+}
+
+/* Typing Indicator */
+.chat-typing-indicator {
+    padding: 8px 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(14, 16, 23, 0.6);
+}
+
+.typing-bubble {
+    display: flex;
+    gap: 4px;
+}
+
+.typing-bubble .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #d4af37;
+    animation: typingPulse 1.2s infinite;
+}
+
+.typing-bubble .dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-bubble .dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingPulse {
+    0%, 100% { opacity: 0.3; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.1); }
+}
+
+.typing-label {
+    font-size: 11px;
+    color: #94a3b8;
+    font-style: italic;
+}
+
+/* Input Bar */
+.chat-input-bar {
+    padding: 12px 14px;
+    background: rgba(14, 16, 23, 0.95);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.support-input {
+    flex: 1;
+    height: 42px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 100px;
+    padding: 0 16px;
+    font-size: 13px;
+    color: #ffffff;
+    outline: none;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.support-input:focus {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(212, 175, 55, 0.6);
+    box-shadow: 0 0 12px rgba(212, 175, 55, 0.15);
+}
+
+.support-input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.support-send-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #d4af37, #aa820a);
+    border: none;
+    color: #0b0c10;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 4px 14px rgba(212, 175, 55, 0.3);
+    flex-shrink: 0;
+}
+
+.support-send-btn:hover {
+    transform: scale(1.08);
+    box-shadow: 0 6px 18px rgba(212, 175, 55, 0.5);
+    background: linear-gradient(135deg, #fef08a, #d4af37);
+}
+
+.support-send-btn:active {
+    transform: scale(0.95);
+}
+
+@media (max-width: 480px) {
+    .support-chat-window {
+        bottom: 0;
+        right: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+}
+</style>
+
+<script>
+// --- 💬 MODEVA Luxury Live Support Widget Client Script ---
+
+(function() {
+    let supportSessionId = localStorage.getItem("modeva_support_session");
+    if (!supportSessionId) {
+        supportSessionId = "sup_" + Math.random().toString(36).substring(2, 10);
+        localStorage.setItem("modeva_support_session", supportSessionId);
+    }
+
+    let isSupportOpen = false;
+    let supportSoundEnabled = localStorage.getItem("modeva_support_sound") !== "0";
+    let knownMessageIds = new Set();
+    let pollInterval = null;
+
+    // Set welcome time
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const welcomeTimeEl = document.getElementById("welcomeMsgTime");
+    if (welcomeTimeEl) welcomeTimeEl.textContent = timeStr;
+
+    // Toggle Chat Window
+    window.toggleSupportChat = function() {
+        const win = document.getElementById("supportChatWindow");
+        const trigger = document.getElementById("supportTriggerBtn");
+        const badge = document.getElementById("supportUnreadBadge");
+        if (!win) return;
+
+        isSupportOpen = !isSupportOpen;
+        if (isSupportOpen) {
+            win.classList.add("open");
+            if (badge) badge.style.display = "none";
+            document.getElementById("supportInput")?.focus();
+            loadSupportMessages();
+            startPolling();
+        } else {
+            win.classList.remove("open");
+            stopPolling();
+        }
+    };
+
+    window.openModevaSupport = function(presetText) {
+        if (!isSupportOpen) {
+            window.toggleSupportChat();
+        }
+        if (presetText) {
+            const inp = document.getElementById("supportInput");
+            if (inp) {
+                inp.value = presetText;
+                inp.focus();
+            }
+        }
+    };
+
+    window.toggleSupportSound = function() {
+        supportSoundEnabled = !supportSoundEnabled;
+        localStorage.setItem("modeva_support_sound", supportSoundEnabled ? "1" : "0");
+        const icon = document.getElementById("supportSoundIcon");
+        if (icon) icon.textContent = supportSoundEnabled ? "🔔" : "🔕";
+    };
+
+    window.sendQuickSupportPrompt = function(promptText) {
+        const inp = document.getElementById("supportInput");
+        if (inp) {
+            inp.value = promptText;
+            document.getElementById("supportChatForm")?.dispatchEvent(new Event("submit"));
+        }
+    };
+
+    window.handleSupportSend = async function(e) {
+        e.preventDefault();
+        const inp = document.getElementById("supportInput");
+        const msg = inp?.value.trim();
+        if (!msg) return;
+
+        inp.value = "";
+
+        // Client info
+        const userObj = JSON.parse(localStorage.getItem("mirelle_user") || "null");
+        const clientName = userObj ? userObj.name : (localStorage.getItem("last_buyer_name") || "Покупатель");
+        const clientPhone = userObj ? (userObj.phone || "") : (localStorage.getItem("last_buyer_phone") || "");
+
+        // Append to UI immediately
+        appendMessageUI({
+            id: "tmp_" + Date.now(),
+            sender: "client",
+            message: msg,
+            client_name: clientName,
+            created_at: new Date().toISOString()
+        });
+
+        // Show typing indicator
+        showTyping(true);
+
+        try {
+            const res = await fetch("/api/support/message", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    session_id: supportSessionId,
+                    message: msg,
+                    client_name: clientName,
+                    client_phone: clientPhone
+                })
+            });
+            const data = await res.json();
+            if (data.status === "ok") {
+                // Poll updates
+                setTimeout(loadSupportMessages, 600);
+            }
+        } catch (err) {
+            console.error("Support send error:", err);
+        } finally {
+            setTimeout(() => showTyping(false), 800);
+        }
+    };
+
+    async function loadSupportMessages() {
+        try {
+            const res = await fetch(`/api/support/messages?session_id=${encodeURIComponent(supportSessionId)}`);
+            const data = await res.json();
+            if (data.status === "ok" && Array.isArray(data.messages)) {
+                let hasNewSupportMsg = false;
+                data.messages.forEach(msg => {
+                    if (!knownMessageIds.has(msg.id)) {
+                        knownMessageIds.add(msg.id);
+                        appendMessageUI(msg);
+                        if (msg.sender === "support") {
+                            hasNewSupportMsg = true;
+                        }
+                    }
+                });
+
+                if (hasNewSupportMsg && supportSoundEnabled) {
+                    playSupportChime();
+                }
+            }
+        } catch (err) {
+            // Silent
+        }
+    }
+
+    function appendMessageUI(msg) {
+        const container = document.getElementById("chatMessagesContainer");
+        if (!container) return;
+
+        const isClient = msg.sender === "client";
+        const dateObj = msg.created_at ? new Date(msg.created_at) : new Date();
+        const timeFormatted = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        const div = document.createElement("div");
+        div.className = `chat-msg ${isClient ? 'msg-client' : 'msg-support'}`;
+        div.innerHTML = `
+            ${!isClient ? '<div class="msg-avatar">M</div>' : ''}
+            <div class="msg-bubble">
+                ${!isClient ? '<div class="msg-author">Служба заботы MODEVA</div>' : ''}
+                <div class="msg-text">${escapeChatHtml(msg.message)}</div>
+                <div class="msg-time">${timeFormatted}</div>
+            </div>
+        `;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function showTyping(show) {
+        const el = document.getElementById("chatTypingIndicator");
+        if (el) el.style.display = show ? "flex" : "none";
+        const container = document.getElementById("chatMessagesContainer");
+        if (container) container.scrollTop = container.scrollHeight;
+    }
+
+    function startPolling() {
+        if (!pollInterval) {
+            pollInterval = setInterval(loadSupportMessages, 3000);
+        }
+    }
+
+    function stopPolling() {
+        if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+        }
+    }
+
+    // Synthesized Web Audio API luxury chime (no audio files needed)
+    function playSupportChime() {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            const ctx = new AudioContext();
+            
+            const osc1 = ctx.createOscillator();
+            const gain1 = ctx.createGain();
+            osc1.type = "sine";
+            osc1.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+            osc1.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
+            gain1.gain.setValueAtTime(0.08, ctx.currentTime);
+            gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+            osc1.connect(gain1);
+            gain1.connect(ctx.destination);
+            osc1.start();
+            osc1.stop(ctx.currentTime + 0.4);
+        } catch (e) {
+            // Audio policy blocked
+        }
+    }
+
+    function escapeChatHtml(str) {
+        if (!str) return "";
+        return str.toString()
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    // Real-time Socket.IO listener if present on page
+    document.addEventListener("DOMContentLoaded", () => {
+        if (typeof io !== "undefined") {
+            try {
+                const s = io();
+                s.on("support_message", (data) => {
+                    if (data && data.session_id === supportSessionId) {
+                        if (!knownMessageIds.has(data.id)) {
+                            knownMessageIds.add(data.id);
+                            appendMessageUI(data);
+                            if (data.sender === "support") {
+                                if (supportSoundEnabled) playSupportChime();
+                                if (!isSupportOpen) {
+                                    const badge = document.getElementById("supportUnreadBadge");
+                                    if (badge) badge.style.display = "flex";
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch (e) {}
+        }
+
+        // Preload any existing messages
+        loadSupportMessages();
+    });
+})();
+</script>

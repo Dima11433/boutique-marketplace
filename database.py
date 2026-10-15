@@ -247,6 +247,21 @@ async def init_db():
             ON CONFLICT(order_number) DO NOTHING
         """)
 
+        # Site Support Live Chat Messages table
+        await db.execute("""
+        CREATE TABLE IF NOT EXISTS site_support_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            client_name TEXT DEFAULT 'Покупатель',
+            client_phone TEXT DEFAULT '',
+            sender TEXT NOT NULL, -- 'client' or 'support'
+            message TEXT NOT NULL,
+            is_read INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_support_session ON site_support_messages (session_id);")
+
         default_settings = {
             "chat_url": config.DEFAULT_CHAT_URL,
             "profits_url": config.DEFAULT_PROFITS_URL,
@@ -1258,3 +1273,74 @@ async def get_recent_orders_for_tracking(limit: int = 8) -> list:
         """, (limit,)) as cur:
             rows = await cur.fetchall()
             return [dict(r) for r in rows]
+
+
+# --- On-Site Live Support System ---
+
+async def save_support_message(
+    session_id: str,
+    sender: str,
+    message: str,
+    client_name: str = "Покупатель",
+    client_phone: str = ""
+) -> dict:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute("""
+            INSERT INTO site_support_messages (session_id, client_name, client_phone, sender, message)
+            VALUES (?, ?, ?, ?, ?)
+        """, (session_id.strip(), client_name.strip() or "Покупатель", client_phone.strip() or "", sender, message.strip()))
+        msg_id = cursor.lastrowid
+        await db.commit()
+
+        async with db.execute("SELECT * FROM site_support_messages WHERE id = ?", (msg_id,)) as cur:
+            row = await cur.fetchone()
+            return dict(row) if row else {
+                "id": msg_id,
+                "session_id": session_id,
+                "sender": sender,
+                "message": message,
+                "client_name": client_name
+            }
+
+
+async def get_support_messages(session_id: str, limit: int = 60) -> list:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("""
+            SELECT * FROM site_support_messages
+            WHERE session_id = ?
+            ORDER BY id ASC
+            LIMIT ?
+        """, (session_id.strip(), limit)) as cur:
+            rows = await cur.fetchall()
+            return [dict(r) for r in rows]
+
+
+async def get_recent_support_sessions(limit: int = 25) -> list:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("""
+            SELECT session_id, client_name, client_phone,
+                   COUNT(*) as message_count,
+                   MAX(created_at) as last_active,
+                   (SELECT message FROM site_support_messages m2 
+                    WHERE m2.session_id = m1.session_id 
+                    ORDER BY id DESC LIMIT 1) as last_message,
+                   (SELECT sender FROM site_support_messages m3 
+                    WHERE m3.session_id = m1.session_id 
+                    ORDER BY id DESC LIMIT 1) as last_sender
+            FROM site_support_messages m1
+            GROUP BY session_id
+            ORDER BY last_active DESC
+            LIMIT ?
+        """, (limit,)) as cur:
+            rows = await cur.fetchall()
+            return [dict(r) for r in rows]
+
+
+async def mark_support_messages_read(session_id: str):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("UPDATE site_support_messages SET is_read = 1 WHERE session_id = ?", (session_id.strip(),))
+        await db.commit()
+

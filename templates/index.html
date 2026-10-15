@@ -46,12 +46,12 @@
                     Трекинг 3D
                 </a>
 
-                <a href="https://t.me/{{ (support_username|default('@kristiq_q')).lstrip('@') }}" target="_blank" class="btn btn-outline-sm support-header-btn" title="Связаться с техподдержкой">
+                <button type="button" class="btn btn-outline-sm support-header-btn" onclick="openModevaSupport()" title="Онлайн-поддержка на сайте 24/7">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 4px;">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                     </svg>
                     Поддержка
-                </a>
+                </button>
 
                 <button class="icon-btn" onclick="openFavorites()" title="Избранное">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -94,6 +94,36 @@
                     <div class="hero-keys-graphic" id="hero3DContainer" title="Интерактивный 3D-символ MODEVA (подвигайте курсором)">
                         <canvas id="hero3DCanvas"></canvas>
                         <div class="hero-3d-badge">✦ 3D MODEVA GOLD</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 🚚 Live 3D Delivery Tracking Showcase Banner on Homepage -->
+            <section class="tracking-showcase-section">
+                <div class="tracking-showcase-card">
+                    <div class="showcase-info">
+                        <div class="showcase-pill">✦ СПУТНИКОВЫЙ 3D-ТРЕКИНГ MODEVA</div>
+                        <h2 class="showcase-heading">Интерактивная карта перемещения заказа</h2>
+                        <p class="showcase-sub">
+                            Следите в реальном времени за подготовкой, опломбировкой и доставкой посылки персональным курьером в 3D.
+                        </p>
+                        <div class="showcase-btn-row">
+                            <a href="/tracking{% if promo_code %}?ref={{ promo_code }}{% endif %}" class="btn btn-gold-tracking">
+                                🚚 Открыть 3D-схему доставки
+                            </a>
+                            <button type="button" class="btn btn-outline-tracking" onclick="openModevaSupport('Здравствуйте! Подскажите статус доставки моего заказа.')">
+                                💬 Консьерж-поддержка
+                            </button>
+                        </div>
+                    </div>
+                    <div class="showcase-map-teaser" onclick="window.location.href='/tracking'">
+                        <div class="teaser-van-icon">🚚</div>
+                        <div class="teaser-stage-badge">
+                            <span class="live-pulse-dot"></span>
+                            <span>LIVE GPS 3D</span>
+                        </div>
+                        <div style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 2px;">MODEVA Courier Route</div>
+                        <span class="teaser-click-hint">Открыть сцену ➔</span>
                     </div>
                 </div>
             </section>
@@ -324,13 +354,8 @@
         </div>
     </div>
 
-    <!-- Floating Luxury Support Button -->
-    <a href="https://t.me/{{ (support_username|default('@kristiq_q')).lstrip('@') }}" target="_blank" class="floating-support-btn" title="Связаться с техподдержкой">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-        </svg>
-        <span>Поддержка 24/7</span>
-    </a>
+    <!-- 💬 MODEVA Luxury Live Support Concierge Widget Included Here -->
+    {% include "components/support_chat.html" %}
 
     <!-- Hidden Initial Context for JS -->
     <script>

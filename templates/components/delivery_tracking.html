@@ -24,15 +24,25 @@
                 <span class="order-hash">#</span>
                 <span class="order-id-val" id="hudOrderNumber">{{ order_number|default('GLOBAL') }}</span>
             </div>
+            <div class="hud-orbit-hint" id="hudOrbitHint" title="Зажмите левую кнопку мыши или проведите пальцем для свободного 3D-вращения">
+                <span class="orbit-icon">🎮</span>
+                <span>3D-Обзор (тяните мышкой)</span>
+            </div>
         </div>
-        <div class="hud-carrier-badge">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="1" y="3" width="15" height="13"></rect>
-                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
-                <circle cx="5.5" cy="18.5" r="2.5"></circle>
-                <circle cx="18.5" cy="18.5" r="2.5"></circle>
-            </svg>
-            <span>MODEVA White Glove Courier</span>
+        <div class="hud-top-right-group">
+            <button type="button" class="hud-sound-btn" id="hudSoundToggle" onclick="toggleAudioSound()" title="Включить / отключить звуковые эффекты этапов">
+                <span id="soundIcon">🔊</span>
+                <span id="soundLabel">Звук</span>
+            </button>
+            <div class="hud-carrier-badge">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="1" y="3" width="15" height="13"></rect>
+                    <polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon>
+                    <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                    <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                </svg>
+                <span>MODEVA White Glove Courier</span>
+            </div>
         </div>
     </div>
 
@@ -127,9 +137,9 @@
                 </div>
 
                 <div class="card-support-link">
-                    <a href="https://t.me/{{ (support_username|default('@kristiq_q')).lstrip('@') }}" target="_blank" class="card-tp-btn">
-                        💬 Связаться с поддержкой
-                    </a>
+                    <button type="button" onclick="openModevaSupport('Здравствуйте! Подскажите статус доставки моего заказа.')" class="card-tp-btn">
+                        💬 Поддержка на сайте
+                    </button>
                 </div>
             </div>
         </div>
@@ -173,6 +183,59 @@
     height: 100% !important;
     display: block;
     outline: none;
+    cursor: grab;
+}
+
+#trackingCanvas:active,
+#trackingCanvas.grabbing {
+    cursor: grabbing;
+}
+
+.hud-orbit-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(16, 18, 27, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px dashed rgba(212, 175, 55, 0.45);
+    padding: 6px 14px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #fef08a;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.hud-top-right-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    pointer-events: auto;
+}
+
+.hud-sound-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(16, 18, 27, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    padding: 6px 14px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fef08a;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.25s ease;
+}
+
+.hud-sound-btn:hover {
+    background: rgba(212, 175, 55, 0.22);
+    border-color: #d4af37;
+    color: #ffffff;
+    transform: translateY(-1px);
 }
 
 .tracking-vignette {
@@ -734,6 +797,9 @@
         buildLocation3Highway();
         buildLocation4Boutique();
 
+        // Interactive Smooth Orbit & Zoom Controls (Mouse & Touch)
+        setupInteractiveOrbitControls(canvas);
+
         // Responsive resize
         window.addEventListener('resize', onWindowResize);
 
@@ -1014,6 +1080,7 @@
 
     function createDeliveryVan() {
         const van = new THREE.Group();
+        van.userData.wheels = [];
 
         // Van Body (Matte Obsidian)
         const bodyGeo = new THREE.BoxGeometry(2.1, 1.8, 4.6);
@@ -1080,6 +1147,8 @@
             const cap = new THREE.Mesh(capGeo, capMat);
             cap.position.set(...pos);
             van.add(cap);
+
+            van.userData.wheels.push(w, cap);
         });
 
         return van;
@@ -1253,6 +1322,13 @@
             const angle = Math.atan2(tangent.x, tangent.z);
             transitTruck.rotation.y = angle;
 
+            // Spin van wheels while traveling
+            if (transitTruck.userData && transitTruck.userData.wheels) {
+                transitTruck.userData.wheels.forEach(wheelMesh => {
+                    wheelMesh.rotation.x += 0.24;
+                });
+            }
+
             // Trail particles following truck
             if (transitTrailParticles) {
                 transitTrailParticles.position.copy(pt);
@@ -1362,9 +1438,173 @@
         if (autoBtn) autoBtn.classList.toggle('active', autoFollow);
     }
 
+    // --- 🎵 Web Audio API Luxury Chime Synthesizer ---
+    let audioEnabled = true;
+
+    function playStageChime(stageNum) {
+        if (!audioEnabled) return;
+        try {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) return;
+            const ctx = new AudioContextClass();
+            const now = ctx.currentTime;
+            
+            // Harmonic luxury chord frequencies for each delivery stage
+            const stageHarmonics = {
+                1: [261.63, 329.63, 392.00],        // C-major triad (Warm warehouse preparation)
+                2: [293.66, 369.99, 440.00],        // D-major triad (Dock loading and sealing)
+                3: [329.63, 415.30, 493.88],        // E-major triad (Speed and highway cruise)
+                4: [392.00, 493.88, 587.33, 783.99] // G-major triumph (Delivered to flagship boutique)
+            };
+            const notes = stageHarmonics[stageNum] || [440, 554, 659];
+            
+            notes.forEach((freq, idx) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, now + idx * 0.075);
+                gain.gain.setValueAtTime(0, now + idx * 0.075);
+                gain.gain.linearRampToValueAtTime(0.08, now + idx * 0.075 + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.075 + 0.85);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now + idx * 0.075);
+                osc.stop(now + idx * 0.075 + 0.9);
+            });
+        } catch(e) {}
+    }
+
+    window.toggleAudioSound = function() {
+        audioEnabled = !audioEnabled;
+        const iconEl = document.getElementById('soundIcon');
+        const labelEl = document.getElementById('soundLabel');
+        const btn = document.getElementById('hudSoundToggle');
+        if (iconEl) iconEl.textContent = audioEnabled ? '🔊' : '🔇';
+        if (labelEl) labelEl.textContent = audioEnabled ? 'Звук' : 'Без звука';
+        if (btn) btn.style.opacity = audioEnabled ? '1' : '0.6';
+        if (audioEnabled) playStageChime(currentStage);
+    };
+
+    // --- 🎮 Interactive Smooth Orbit & Zoom Controls ---
+    function setupInteractiveOrbitControls(canvasEl) {
+        let isPointerDown = false;
+        let lastX = 0;
+        let lastY = 0;
+        let touchStartDist = 0;
+
+        canvasEl.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            isPointerDown = true;
+            lastX = e.clientX;
+            lastY = e.clientY;
+            canvasEl.classList.add('grabbing');
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isPointerDown) {
+                isPointerDown = false;
+                canvasEl.classList.remove('grabbing');
+            }
+        });
+
+        canvasEl.addEventListener('mousemove', (e) => {
+            if (!isPointerDown) return;
+            const dx = e.clientX - lastX;
+            const dy = e.clientY - lastY;
+            lastX = e.clientX;
+            lastY = e.clientY;
+            applyOrbitRotation(dx, dy);
+        });
+
+        canvasEl.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            applyCameraZoom(e.deltaY * 0.001);
+        }, { passive: false });
+
+        // Touch support for mobile and tablets
+        canvasEl.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                isPointerDown = true;
+                lastX = e.touches[0].clientX;
+                lastY = e.touches[0].clientY;
+            } else if (e.touches.length === 2) {
+                touchStartDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+            }
+        }, { passive: true });
+
+        canvasEl.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 1 && isPointerDown) {
+                const dx = e.touches[0].clientX - lastX;
+                const dy = e.touches[0].clientY - lastY;
+                lastX = e.touches[0].clientX;
+                lastY = e.touches[0].clientY;
+                applyOrbitRotation(dx, dy);
+            } else if (e.touches.length === 2) {
+                const curDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                if (touchStartDist > 0) {
+                    const diff = touchStartDist - curDist;
+                    applyCameraZoom(diff * 0.005);
+                    touchStartDist = curDist;
+                }
+            }
+        }, { passive: true });
+
+        canvasEl.addEventListener('touchend', () => {
+            isPointerDown = false;
+            touchStartDist = 0;
+        }, { passive: true });
+    }
+
+    function applyOrbitRotation(deltaX, deltaY) {
+        if (!camera || !lookTarget) return;
+        autoFollow = false;
+        refreshCameraButtonsUI();
+
+        const offset = new THREE.Vector3().subVectors(camera.position, lookTarget);
+        let radius = offset.length();
+        let theta = Math.atan2(offset.x, offset.z);
+        let phi = Math.acos(Math.max(-1, Math.min(1, offset.y / radius)));
+
+        theta -= deltaX * 0.005;
+        phi = Math.max(0.12, Math.min(Math.PI / 2 - 0.04, phi - deltaY * 0.005));
+
+        offset.x = radius * Math.sin(phi) * Math.sin(theta);
+        offset.y = radius * Math.cos(phi);
+        offset.z = radius * Math.sin(phi) * Math.cos(theta);
+
+        camera.position.copy(lookTarget).add(offset);
+        camera.lookAt(lookTarget);
+    }
+
+    function applyCameraZoom(delta) {
+        if (!camera || !lookTarget) return;
+        autoFollow = false;
+        refreshCameraButtonsUI();
+
+        const offset = new THREE.Vector3().subVectors(camera.position, lookTarget);
+        let radius = offset.length();
+        let newRadius = THREE.MathUtils.clamp(radius * (1 + delta), 7, 85);
+        offset.multiplyScalar(newRadius / radius);
+
+        camera.position.copy(lookTarget).add(offset);
+        camera.lookAt(lookTarget);
+    }
+
+    function refreshCameraButtonsUI() {
+        const autoBtn = document.getElementById('camBtnAuto');
+        if (autoBtn) autoBtn.classList.toggle('active', autoFollow);
+    }
+
     // 12. Manual Controls Exposed Globally
     window.switchStageView = function(stageNum) {
         autoFollow = false;
+        playStageChime(stageNum);
         transitionToStage(stageNum);
     };
 
@@ -1473,6 +1713,7 @@
                 console.log(`[Tracking] Real-time delivery stage update received: ${newStage}`);
                 currentStage = newStage;
                 autoFollow = true;
+                playStageChime(currentStage);
                 transitionToStage(currentStage);
 
                 // Subtle audio or visual flash
