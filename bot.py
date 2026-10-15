@@ -2001,9 +2001,9 @@ async def cb_admin_delivery_tracking_menu(callback: CallbackQuery, state: FSMCon
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text=f"{s1_mark}🏢 1. На складе", callback_data=f"adm_set_stage_1_{order_num}")],
-            [InlineKeyboardButton(text=f"{s2_mark}📦 2. Погружено", callback_data=f"adm_set_stage_2_{order_num}")],
+            [InlineKeyboardButton(text=f"{s2_mark}📦 2. Погрузка", callback_data=f"adm_set_stage_2_{order_num}")],
             [InlineKeyboardButton(text=f"{s3_mark}🛣 3. В пути", callback_data=f"adm_set_stage_3_{order_num}")],
-            [InlineKeyboardButton(text=f"{s4_mark}📍 4. Товар прибыл", callback_data=f"adm_set_stage_4_{order_num}")],
+            [InlineKeyboardButton(text=f"{s4_mark}📍 4. На месте", callback_data=f"adm_set_stage_4_{order_num}")],
             [InlineKeyboardButton(text="📋 Выбрать другой заказ", callback_data="adm_delivery_select_order")],
             [InlineKeyboardButton(text="🌐 Открыть 3D-схему на сайте", url=tracking_url)],
             [InlineKeyboardButton(text="◀️ Назад в админку", callback_data="admin_back_main")]

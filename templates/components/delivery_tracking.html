@@ -1,5 +1,6 @@
-<!-- 🚚 MODEVA LUXURY 3D INTERACTIVE DELIVERY TRACKING COMPONENT -->
-<!-- Modular, Self-Contained Component (Three.js + GSAP + WebSockets / Socket.io) -->
+<!-- 🚚 MODEVA LUXURY 3D LINEAR DELIVERY PIPELINE TRACKING COMPONENT -->
+<!-- Direct Implementation of Linear 4-Node Route: O ─── O ─── O ─── O -->
+<!-- 1. На складе  ───  2. Погрузка  ───  3. В пути  ───  4. На месте -->
 
 <div class="modeva-tracking-module" id="modevaTrackingWidget" data-order="{{ order_number|default('GLOBAL') }}" data-initial-stage="{{ current_stage|default(1) }}">
     
@@ -9,7 +10,7 @@
         <div class="tracking-vignette"></div>
         <div class="tracking-loader" id="trackingLoader">
             <div class="loader-spinner"></div>
-            <div class="loader-text">Инициализация 3D-трекинга доставки MODEVA...</div>
+            <div class="loader-text">Инициализация 3D-маршрута MODEVA...</div>
         </div>
     </div>
 
@@ -46,57 +47,53 @@
         </div>
     </div>
 
-    <!-- HUD Overlay: 4-Stage Stepper Progress Bar -->
+    <!-- HUD Overlay: Linear 4-Stage Stepper (Exact Match to User Sketch: O ─── O ─── O ─── O) -->
     <div class="tracking-stepper-container">
         <div class="stepper-track-bg"></div>
         <div class="stepper-track-fill" id="stepperTrackFill" style="width: 0%;"></div>
 
         <div class="stepper-steps">
-            <!-- Stage 1 -->
-            <div class="stepper-step" id="stepNode1" onclick="switchStageView(1)" title="Перейти к складу">
+            <!-- Node 1: На складе -->
+            <div class="stepper-step" id="stepNode1" onclick="switchStageView(1)" title="Станция 1: На складе">
                 <div class="step-circle">
-                    <span class="step-icon">🏢</span>
                     <span class="step-num">1</span>
                 </div>
                 <div class="step-meta">
                     <span class="step-title">На складе</span>
-                    <span class="step-sub">Упаковка</span>
+                    <span class="step-sub">Комплектация</span>
                 </div>
             </div>
 
-            <!-- Stage 2 -->
-            <div class="stepper-step" id="stepNode2" onclick="switchStageView(2)" title="Перейти к зоне погрузки">
+            <!-- Node 2: Погрузка -->
+            <div class="stepper-step" id="stepNode2" onclick="switchStageView(2)" title="Станция 2: Погрузка">
                 <div class="step-circle">
-                    <span class="step-icon">📦</span>
                     <span class="step-num">2</span>
                 </div>
                 <div class="step-meta">
-                    <span class="step-title">Погружено</span>
-                    <span class="step-sub">В хабе</span>
+                    <span class="step-title">Погрузка</span>
+                    <span class="step-sub">Логистический хаб</span>
                 </div>
             </div>
 
-            <!-- Stage 3 -->
-            <div class="stepper-step" id="stepNode3" onclick="switchStageView(3)" title="Перейти к маршруту в пути">
+            <!-- Node 3: В пути -->
+            <div class="stepper-step" id="stepNode3" onclick="switchStageView(3)" title="Станция 3: В пути">
                 <div class="step-circle">
-                    <span class="step-icon">🚚</span>
                     <span class="step-num">3</span>
                 </div>
                 <div class="step-meta">
                     <span class="step-title">В пути</span>
-                    <span class="step-sub">Маршрут</span>
+                    <span class="step-sub">Спецтранспорт</span>
                 </div>
             </div>
 
-            <!-- Stage 4 -->
-            <div class="stepper-step" id="stepNode4" onclick="switchStageView(4)" title="Перейти к пункту назначения">
+            <!-- Node 4: На месте -->
+            <div class="stepper-step" id="stepNode4" onclick="switchStageView(4)" title="Станция 4: На месте">
                 <div class="step-circle">
-                    <span class="step-icon">📍</span>
                     <span class="step-num">4</span>
                 </div>
                 <div class="step-meta">
-                    <span class="step-title">Прибыл</span>
-                    <span class="step-sub">Пункт выдачи</span>
+                    <span class="step-title">На месте</span>
+                    <span class="step-sub">Пункт выдачи / Бутик</span>
                 </div>
             </div>
         </div>
@@ -108,7 +105,7 @@
             <div class="card-header">
                 <div class="card-stage-badge" id="cardStageBadge">
                     <span class="stage-dot"></span>
-                    <span id="cardStageKey">ЭТАП 1 ИЗ 4</span>
+                    <span id="cardStageKey">ЭТАП 1 ИЗ 4: НА СКЛАДЕ</span>
                 </div>
                 <div class="card-sync-status" id="cardSyncStatus">
                     <span class="sync-icon">⚡️</span>
@@ -125,15 +122,17 @@
 
             <div class="card-footer">
                 <div class="card-camera-controls">
-                    <span class="ctrl-label">Ракурс камеры:</span>
+                    <span class="ctrl-label">Ракурс:</span>
                     <button class="cam-btn active" id="camBtnAuto" onclick="focusActiveStage()" title="Следить за актуальным этапом">
                         🎥 Авто
                     </button>
-                    <button class="cam-btn" id="camBtn1" onclick="switchStageView(1)">🏢 Склад</button>
-                    <button class="cam-btn" id="camBtn2" onclick="switchStageView(2)">📦 Погрузка</button>
-                    <button class="cam-btn" id="camBtn3" onclick="switchStageView(3)">🛣 В пути</button>
-                    <button class="cam-btn" id="camBtn4" onclick="switchStageView(4)">📍 Прибыл</button>
-                    <button class="cam-btn" id="camBtnOverview" onclick="setOverviewView()" title="Общий изометрический вид всей карты">🗺 Карта</button>
+                    <button class="cam-btn" id="camBtnOverview" onclick="setOverviewView()" title="Показать весь маршрут целиком (как на схеме)">
+                        🗺 Вся схема
+                    </button>
+                    <button class="cam-btn" id="camBtn1" onclick="switchStageView(1)">1. Склад</button>
+                    <button class="cam-btn" id="camBtn2" onclick="switchStageView(2)">2. Погрузка</button>
+                    <button class="cam-btn" id="camBtn3" onclick="switchStageView(3)">3. В пути</button>
+                    <button class="cam-btn" id="camBtn4" onclick="switchStageView(4)">4. На месте</button>
                 </div>
 
                 <div class="card-support-link">
@@ -155,8 +154,8 @@
     max-height: 85vh;
     border-radius: 24px;
     overflow: hidden;
-    background: radial-gradient(circle at 50% 30%, #161822 0%, #0a0b10 100%);
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(212, 175, 55, 0.2);
+    background: radial-gradient(circle at 50% 30%, #141724 0%, #0a0b10 100%);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(212, 175, 55, 0.22);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     color: #ffffff;
     user-select: none;
@@ -191,59 +190,12 @@
     cursor: grabbing;
 }
 
-.hud-orbit-hint {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(16, 18, 27, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px dashed rgba(212, 175, 55, 0.45);
-    padding: 6px 14px;
-    border-radius: 100px;
-    font-size: 11px;
-    font-weight: 500;
-    color: #fef08a;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-}
-
-.hud-top-right-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    pointer-events: auto;
-}
-
-.hud-sound-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(16, 18, 27, 0.85);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(212, 175, 55, 0.35);
-    padding: 6px 14px;
-    border-radius: 100px;
-    font-size: 11px;
-    font-weight: 600;
-    color: #fef08a;
-    cursor: pointer;
-    outline: none;
-    transition: all 0.25s ease;
-}
-
-.hud-sound-btn:hover {
-    background: rgba(212, 175, 55, 0.22);
-    border-color: #d4af37;
-    color: #ffffff;
-    transform: translateY(-1px);
-}
-
 .tracking-vignette {
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: radial-gradient(ellipse at center, transparent 40%, rgba(10, 11, 16, 0.6) 100%);
-    box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.8);
+    background: radial-gradient(ellipse at center, transparent 45%, rgba(10, 11, 16, 0.65) 100%);
+    box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.85);
 }
 
 .tracking-loader {
@@ -297,6 +249,7 @@
     align-items: center;
     gap: 10px;
     pointer-events: auto;
+    flex-wrap: wrap;
 }
 
 .hud-live-pill {
@@ -346,6 +299,53 @@
     margin-right: 2px;
 }
 
+.hud-orbit-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(16, 18, 27, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px dashed rgba(212, 175, 55, 0.45);
+    padding: 6px 14px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #fef08a;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.hud-top-right-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    pointer-events: auto;
+}
+
+.hud-sound-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(16, 18, 27, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    padding: 6px 14px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fef08a;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.25s ease;
+}
+
+.hud-sound-btn:hover {
+    background: rgba(212, 175, 55, 0.22);
+    border-color: #d4af37;
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
 .hud-carrier-badge {
     pointer-events: auto;
     display: inline-flex;
@@ -362,43 +362,44 @@
 
 @media (max-width: 600px) {
     .hud-carrier-badge { display: none; }
+    .hud-orbit-hint { display: none; }
 }
 
-/* 4-Stage Stepper Progress Bar */
+/* 4-Stage Stepper Progress Bar (Linear Pipeline O — O — O — O) */
 .tracking-stepper-container {
     position: absolute;
     top: 74px;
     left: 24px;
     right: 24px;
     z-index: 10;
-    background: rgba(12, 14, 21, 0.78);
+    background: rgba(12, 14, 21, 0.82);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.09);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 18px;
-    padding: 16px 24px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    padding: 16px 28px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
 }
 
 .stepper-track-bg {
     position: absolute;
     top: 36px;
-    left: 55px;
-    right: 55px;
+    left: 50px;
+    right: 50px;
     height: 3px;
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 2px;
+    border-radius: 3px;
     z-index: 1;
 }
 
 .stepper-track-fill {
     position: absolute;
     top: 36px;
-    left: 55px;
+    left: 50px;
     height: 3px;
-    background: linear-gradient(90deg, #d4af37, #fef08a);
-    box-shadow: 0 0 12px rgba(212, 175, 55, 0.8);
-    border-radius: 2px;
+    background: linear-gradient(90deg, #10b981 0%, #34d399 70%, #d4af37 100%);
+    box-shadow: 0 0 12px rgba(52, 211, 153, 0.8);
+    border-radius: 3px;
     z-index: 2;
     transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -415,119 +416,105 @@
     flex-direction: column;
     align-items: center;
     cursor: pointer;
-    transition: all 0.3s ease;
-    width: 80px;
+    transition: transform 0.2s;
 }
 
-.stepper-step:hover .step-circle {
-    transform: scale(1.1);
-    border-color: rgba(212, 175, 55, 0.8);
+.stepper-step:hover {
+    transform: translateY(-2px);
 }
 
 .step-circle {
     width: 42px;
     height: 42px;
     border-radius: 50%;
-    background: #141724;
-    border: 2px solid rgba(255, 255, 255, 0.15);
+    background: #151824;
+    border: 2px solid rgba(255, 255, 255, 0.16);
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-bottom: 8px;
+    transition: all 0.35s ease;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-.step-icon {
-    font-size: 17px;
-    transition: transform 0.3s;
+.step-circle .step-num {
+    font-size: 14px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.5);
+    transition: color 0.35s ease;
 }
 
-.step-num {
-    display: none;
+/* Active Step: Bright Glowing Green/Gold Circle (like user sketch) */
+.stepper-step.active .step-circle {
+    background: #0f241d;
+    border-color: #10b981;
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.8), inset 0 0 10px rgba(16, 185, 129, 0.4);
+    transform: scale(1.12);
+}
+
+.stepper-step.active .step-circle .step-num {
+    color: #34d399;
+}
+
+/* Completed Step */
+.stepper-step.completed .step-circle {
+    background: rgba(16, 185, 129, 0.18);
+    border-color: #10b981;
+}
+
+.stepper-step.completed .step-circle .step-num {
+    color: #10b981;
 }
 
 .step-meta {
-    margin-top: 8px;
     text-align: center;
-    display: flex;
-    flex-direction: column;
 }
 
 .step-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.6);
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.85);
+    margin-bottom: 2px;
     transition: color 0.3s;
-    white-space: nowrap;
-}
-
-.step-sub {
-    font-size: 10px;
-    color: rgba(255, 255, 255, 0.35);
-    margin-top: 1px;
-}
-
-/* Active & Completed Stepper states */
-.stepper-step.completed .step-circle {
-    background: #1a1e2f;
-    border-color: #d4af37;
-    color: #d4af37;
-}
-
-.stepper-step.completed .step-title {
-    color: rgba(255, 255, 255, 0.9);
-}
-
-.stepper-step.active .step-circle {
-    background: linear-gradient(135deg, #d4af37, #aa820a);
-    border-color: #fef08a;
-    transform: scale(1.15);
-    box-shadow: 0 0 20px rgba(212, 175, 55, 0.8);
-}
-
-.stepper-step.active .step-circle::after {
-    content: '';
-    position: absolute;
-    inset: -6px;
-    border-radius: 50%;
-    border: 2px solid rgba(212, 175, 55, 0.5);
-    animation: ringPulse 1.8s infinite cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes ringPulse {
-    0% { transform: scale(0.9); opacity: 1; }
-    100% { transform: scale(1.35); opacity: 0; }
 }
 
 .stepper-step.active .step-title {
-    color: #fef08a;
-    font-weight: 700;
+    color: #34d399;
 }
 
-@media (max-width: 600px) {
+.step-sub {
+    display: block;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+@media (max-width: 680px) {
     .tracking-stepper-container {
         padding: 12px 14px;
-        top: 66px;
+        top: 64px;
     }
     .stepper-track-bg, .stepper-track-fill {
         top: 28px;
-        left: 35px;
-        right: 35px;
+        left: 30px;
+        right: 30px;
     }
     .step-circle {
-        width: 34px;
-        height: 34px;
+        width: 32px;
+        height: 32px;
+        margin-bottom: 4px;
     }
-    .step-icon { font-size: 14px; }
-    .step-title { font-size: 10px; }
+    .step-circle .step-num { font-size: 12px; }
+    .step-title { font-size: 11px; }
     .step-sub { display: none; }
 }
 
-/* Bottom HUD Card */
+/* Bottom Glassmorphic Status Card */
 .tracking-hud-bottom {
     position: absolute;
-    bottom: 24px;
+    bottom: 20px;
     left: 24px;
     right: 24px;
     z-index: 10;
@@ -536,14 +523,13 @@
 
 .tracking-card {
     pointer-events: auto;
-    background: rgba(14, 16, 24, 0.84);
+    background: rgba(12, 14, 21, 0.88);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(212, 175, 55, 0.25);
+    border: 1px solid rgba(212, 175, 55, 0.3);
     border-radius: 20px;
     padding: 20px 26px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-    transition: all 0.4s ease;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
 }
 
 .card-header {
@@ -551,6 +537,8 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: 8px;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .card-stage-badge {
@@ -559,8 +547,8 @@
     gap: 6px;
     font-size: 11px;
     font-weight: 700;
-    letter-spacing: 0.1em;
-    color: #d4af37;
+    letter-spacing: 0.08em;
+    color: #34d399;
     text-transform: uppercase;
 }
 
@@ -568,13 +556,13 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #d4af37;
-    box-shadow: 0 0 8px #d4af37;
+    background: #10b981;
+    box-shadow: 0 0 8px #10b981;
 }
 
 .card-sync-status {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(255, 255, 255, 0.45);
     display: flex;
     align-items: center;
     gap: 4px;
@@ -633,15 +621,15 @@
 }
 
 .cam-btn:hover {
-    background: rgba(212, 175, 55, 0.18);
-    border-color: rgba(212, 175, 55, 0.5);
+    background: rgba(16, 185, 129, 0.18);
+    border-color: rgba(16, 185, 129, 0.5);
     color: #ffffff;
 }
 
 .cam-btn.active {
-    background: rgba(212, 175, 55, 0.28);
-    border-color: #d4af37;
-    color: #fef08a;
+    background: rgba(16, 185, 129, 0.25);
+    border-color: #10b981;
+    color: #34d399;
     font-weight: 600;
 }
 
@@ -657,85 +645,77 @@
     padding: 7px 16px;
     border-radius: 10px;
     text-decoration: none;
+    cursor: pointer;
+    outline: none;
+    font-family: inherit;
     transition: all 0.25s ease;
 }
 
 .card-tp-btn:hover {
-    background: rgba(212, 175, 55, 0.35);
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.35), rgba(212, 175, 55, 0.15));
     border-color: #d4af37;
-    transform: translateY(-1px);
-    box-shadow: 0 6px 18px rgba(212, 175, 55, 0.25);
-}
-
-@media (max-width: 600px) {
-    .tracking-hud-bottom {
-        bottom: 12px;
-        left: 12px;
-        right: 12px;
-    }
-    .tracking-card {
-        padding: 14px 16px;
-        border-radius: 14px;
-    }
-    .card-title { font-size: 18px; }
-    .card-desc { font-size: 12px; margin-bottom: 10px; }
-    .card-camera-controls { display: none; }
+    box-shadow: 0 4px 14px rgba(212, 175, 55, 0.3);
+    color: #ffffff;
 }
 </style>
 
-<!-- External Libraries (Three.js + GSAP + Socket.io) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
-
-<!-- Interactive 3D Delivery Scheme Controller -->
+<!-- Three.js + GSAP + WebSocket Interactive Linear Pipeline Logic -->
 <script>
 (function() {
     'use strict';
 
-    // 1. Data & State Configuration
+    // 1. Data & State Configuration (Exact 4 Stages matching sketch)
     const STAGES_INFO = {
         1: {
             stage: 1,
             key: "warehouse",
             name: "На складе: Комплектация и проверка",
             subtitle: "Комплектация и фирменная упаковка",
+            shortName: "На складе",
             desc: "Заказ бережно упакован в фирменный пыльник и премиальный бокс MODEVA. Проведена экспертная проверка подлинности и опломбировка.",
-            camera: { x: -22, y: 13, z: -1 },
-            target: { x: -28, y: 3, z: -12 }
+            xPos: -21,
+            camera: { x: -21, y: 7.5, z: 15 },
+            target: { x: -21, y: 1.2, z: 0 }
         },
         2: {
             stage: 2,
-            key: "loaded",
-            name: "Погружено: Передано в логистический хаб",
+            key: "loading",
+            name: "Погрузка: Передано в логистический хаб",
             subtitle: "Погрузка в спецтранспорт курьера",
+            shortName: "Погрузка",
             desc: "Груз передан в зону отгрузки и загружен в спецтранспорт курьерской службы. Оформлены пломбы и сопроводительные документы.",
-            camera: { x: -6, y: 11, z: 12 },
-            target: { x: -12, y: 2.5, z: 2 }
+            xPos: -7,
+            camera: { x: -7, y: 7.5, z: 15 },
+            target: { x: -7, y: 1.2, z: 0 }
         },
         3: {
             stage: 3,
             key: "in_transit",
             name: "В пути: Экспресс-доставка по маршруту",
             subtitle: "Курьерский спецтранспорт на маршруте",
+            shortName: "В пути",
             desc: "Курьерский транспорт движется по маршруту следования. Осуществляется непрерывный спутниковый GPS-мониторинг доставки.",
-            camera: { x: 7, y: 14, z: 18 },
-            target: { x: 5, y: 2, z: 1 }
+            xPos: 7,
+            camera: { x: 7, y: 7.5, z: 15 },
+            target: { x: 7, y: 1.2, z: 0 }
         },
         4: {
             stage: 4,
             key: "delivered",
-            name: "Товар прибыл: Доставлен в пункт назначения",
+            name: "На месте: Доставлен в пункт назначения",
             subtitle: "Готов к выдаче в бутике / вручению",
+            shortName: "На месте",
             desc: "Заказ успешно доставлен в бутик / пункт выдачи MODEVA. Ожидает вручения клиенту с возможностью примерки.",
-            camera: { x: 22, y: 12, z: 3 },
-            target: { x: 28, y: 3.5, z: -8 }
+            xPos: 21,
+            camera: { x: 21, y: 7.5, z: 15 },
+            target: { x: 21, y: 1.2, z: 0 }
         }
     };
 
+    // Full Overview Camera captures the whole O ─── O ─── O ─── O pipeline centered!
     const OVERVIEW_CAMERA = {
-        camera: { x: 0, y: 38, z: 32 },
-        target: { x: 0, y: 0, z: -2 }
+        camera: { x: 0, y: 15, z: 36 },
+        target: { x: 0, y: 1.0, z: 0 }
     };
 
     const widgetEl = document.getElementById('modevaTrackingWidget');
@@ -745,716 +725,38 @@
 
     // 2. Three.js Scene Variables
     let scene, camera, renderer;
-    let lookTarget = new THREE.Vector3(-28, 3, -12);
+    let lookTarget = new THREE.Vector3(0, 1.0, 0);
     let isInitialized = false;
 
-    // Animated objects references
-    let parcelBox, scannerBeam, scanParticles;
-    let loadingTruck, loadingBox, dockLightBeacons = [];
-    let transitTruck, transitTrailParticles, roadSpline;
-    let boutiqueBeacon, boutiqueCheckmark, boutiqueSparkles;
+    // Pedestal meshes & glowing rings
+    const stationNodes = {};
+    const trackSegments = [];
+    let travelingCapsule;
+
+    // Animated objects
+    let parcelBox, scannerBeam;
+    let loadingBoxes = [], dockLights = [];
+    let transitVan, transitWheels = [], transitHeadlight;
+    let boutiquePavilion, boutiqueBeacon, boutiqueCheckmark;
     let clock = new THREE.Clock();
 
-    // 3. Scene Initialization
-    function init3D() {
-        const container = document.getElementById('tracking3DViewport');
-        const canvas = document.getElementById('trackingCanvas');
-        if (!container || !canvas) return;
-
-        const width = container.clientWidth || 800;
-        const height = container.clientHeight || 600;
-
-        // Scene
-        scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0c0e16);
-        scene.fog = new THREE.FogExp2(0x0c0e16, 0.015);
-
-        // Camera
-        camera = new THREE.PerspectiveCamera(45, width / height, 0.5, 500);
-        const initialCfg = STAGES_INFO[currentStage] || STAGES_INFO[1];
-        camera.position.set(initialCfg.camera.x, initialCfg.camera.y, initialCfg.camera.z);
-        lookTarget.set(initialCfg.target.x, initialCfg.target.y, initialCfg.target.z);
-        camera.lookAt(lookTarget);
-
-        // Renderer
-        renderer = new THREE.WebGLRenderer({
-            canvas: canvas,
-            antialias: true,
-            powerPreference: 'high-performance'
-        });
-        renderer.setSize(width, height);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-        // Lighting
-        buildLighting();
-
-        // Environment & Locations
-        buildTerrainAndRoads();
-        buildLocation1Warehouse();
-        buildLocation2LoadingDock();
-        buildLocation3Highway();
-        buildLocation4Boutique();
-
-        // Interactive Smooth Orbit & Zoom Controls (Mouse & Touch)
-        setupInteractiveOrbitControls(canvas);
-
-        // Responsive resize
-        window.addEventListener('resize', onWindowResize);
-
-        // Hide loader
-        const loader = document.getElementById('trackingLoader');
-        if (loader) {
-            setTimeout(() => {
-                loader.style.opacity = '0';
-                setTimeout(() => loader.style.display = 'none', 600);
-            }, 300);
-        }
-
-        isInitialized = true;
-        animate();
-        updateUI(currentStage);
-    }
-
-    // 4. Lighting System (Luxury Gold & Ambient Highlights)
-    function buildLighting() {
-        // Soft ambient fill
-        const ambient = new THREE.AmbientLight(0xffffff, 0.75);
-        scene.add(ambient);
-
-        // Directional golden sunlight
-        const sun = new THREE.DirectionalLight(0xfff5e6, 1.25);
-        sun.position.set(25, 45, 30);
-        sun.castShadow = true;
-        sun.shadow.mapSize.width = 2048;
-        sun.shadow.mapSize.height = 2048;
-        sun.shadow.camera.near = 10;
-        sun.shadow.camera.far = 120;
-        const d = 45;
-        sun.shadow.camera.left = -d;
-        sun.shadow.camera.right = d;
-        sun.shadow.camera.top = d;
-        sun.shadow.camera.bottom = -d;
-        sun.shadow.bias = -0.0005;
-        scene.add(sun);
-
-        // Soft blue/slate rim light
-        const rimLight = new THREE.DirectionalLight(0x4f46e5, 0.4);
-        rimLight.position.set(-30, 20, -30);
-        scene.add(rimLight);
-    }
-
-    // 5. Environment: Ground Terrain, Grid, and Road Network
-    function buildTerrainAndRoads() {
-        // Main Ground
-        const groundGeo = new THREE.PlaneGeometry(160, 100);
-        const groundMat = new THREE.MeshStandardMaterial({
-            color: 0x0f111a,
-            roughness: 0.85,
-            metalness: 0.15
-        });
-        const ground = new THREE.Mesh(groundGeo, groundMat);
-        ground.rotation.x = -Math.PI / 2;
-        ground.receiveShadow = true;
-        scene.add(ground);
-
-        // Subtle luxury grid
-        const grid = new THREE.GridHelper(140, 70, 0x222638, 0x161824);
-        grid.position.y = 0.02;
-        scene.add(grid);
-
-        // Curving Road connecting Warehouse -> Loading -> Highway -> Boutique
-        const roadPoints = [
-            new THREE.Vector3(-28, 0.05, -12),
-            new THREE.Vector3(-20, 0.05, -6),
-            new THREE.Vector3(-12, 0.05, 2),
-            new THREE.Vector3(-2, 0.05, 5),
-            new THREE.Vector3(8, 0.05, 2),
-            new THREE.Vector3(18, 0.05, -2),
-            new THREE.Vector3(28, 0.05, -8)
-        ];
-        roadSpline = new THREE.CatmullRomCurve3(roadPoints);
-
-        // Create road geometry ribbon
-        const roadGeo = new THREE.BufferGeometry().setFromPoints(roadSpline.getPoints(100));
-        const roadMat = new THREE.LineBasicMaterial({ color: 0xd4af37, transparent: true, opacity: 0.35, linewidth: 2 });
-        const roadLine = new THREE.Line(roadGeo, roadMat);
-        scene.add(roadLine);
-
-        // Asphalt strip
-        const asphaltGeo = new THREE.PlaneGeometry(80, 5.5);
-        const asphaltMat = new THREE.MeshStandardMaterial({ color: 0x181a24, roughness: 0.7 });
-        const asphalt = new THREE.Mesh(asphaltGeo, asphaltMat);
-        asphalt.rotation.x = -Math.PI / 2;
-        asphalt.rotation.z = THREE.MathUtils.degToRad(-15);
-        asphalt.position.set(0, 0.03, -1);
-        asphalt.receiveShadow = true;
-        scene.add(asphalt);
-
-        // Decorative streetlamps along the road
-        for (let i = -20; i <= 20; i += 10) {
-            const lamp = createStreetLamp(i, 0, i * 0.2 + 4.5);
-            scene.add(lamp);
-        }
-    }
-
-    function createStreetLamp(x, y, z) {
-        const group = new THREE.Group();
-        group.position.set(x, y, z);
-
-        // Pole
-        const poleGeo = new THREE.CylinderGeometry(0.06, 0.08, 3.5, 8);
-        const poleMat = new THREE.MeshStandardMaterial({ color: 0x2d3244, metalness: 0.8 });
-        const pole = new THREE.Mesh(poleGeo, poleMat);
-        pole.position.y = 1.75;
-        group.add(pole);
-
-        // Lamp head
-        const headGeo = new THREE.BoxGeometry(0.5, 0.12, 0.3);
-        const headMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9 });
-        const head = new THREE.Mesh(headGeo, headMat);
-        head.position.set(0.15, 3.5, 0);
-        group.add(head);
-
-        // Glowing bulb
-        const bulbGeo = new THREE.SphereGeometry(0.12, 8, 8);
-        const bulbMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
-        const bulb = new THREE.Mesh(bulbGeo, bulbMat);
-        bulb.position.set(0.2, 3.42, 0);
-        group.add(bulb);
-
-        return group;
-    }
-
-    // 6. Location 1: The Luxury Warehouse (Склад MODEVA)
-    function buildLocation1Warehouse() {
-        const group = new THREE.Group();
-        group.position.set(-28, 0, -12);
-
-        // Main Fulfillment Building
-        const bldgGeo = new THREE.BoxGeometry(10, 5.5, 12);
-        const bldgMat = new THREE.MeshStandardMaterial({
-            color: 0x1a1d2c,
-            metalness: 0.5,
-            roughness: 0.4
-        });
-        const building = new THREE.Mesh(bldgGeo, bldgMat);
-        building.position.y = 2.75;
-        building.castShadow = true;
-        building.receiveShadow = true;
-        group.add(building);
-
-        // Gold Roof Trim
-        const roofGeo = new THREE.BoxGeometry(10.4, 0.4, 12.4);
-        const roofMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.2 });
-        const roof = new THREE.Mesh(roofGeo, roofMat);
-        roof.position.y = 5.6;
-        roof.castShadow = true;
-        group.add(roof);
-
-        // Illuminated Glass Ribbon
-        const glassGeo = new THREE.BoxGeometry(10.1, 1.2, 8);
-        const glassMat = new THREE.MeshStandardMaterial({
-            color: 0x38bdf8,
-            emissive: 0x0284c7,
-            emissiveIntensity: 0.6,
-            roughness: 0.1,
-            metalness: 0.9
-        });
-        const glass = new THREE.Mesh(glassGeo, glassMat);
-        glass.position.set(0, 3.6, 0);
-        group.add(glass);
-
-        // Golden MODEVA Logo Banner on Warehouse Facade
-        const signGeo = new THREE.BoxGeometry(4.5, 0.8, 0.2);
-        const signMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.95 });
-        const sign = new THREE.Mesh(signGeo, signMat);
-        sign.position.set(0, 4.7, 6.05);
-        group.add(sign);
-
-        // Packing Platform in front of warehouse
-        const platGeo = new THREE.BoxGeometry(4, 0.6, 4);
-        const platMat = new THREE.MeshStandardMaterial({ color: 0x232738, roughness: 0.6 });
-        const platform = new THREE.Mesh(platGeo, platMat);
-        platform.position.set(0, 0.3, 8);
-        platform.receiveShadow = true;
-        group.add(platform);
-
-        // Luxury Branded Golden Parcel Box
-        const boxGeo = new THREE.BoxGeometry(1.2, 1.1, 1.2);
-        const boxMat = new THREE.MeshStandardMaterial({
-            color: 0xd4af37,
-            metalness: 0.65,
-            roughness: 0.3
-        });
-        parcelBox = new THREE.Mesh(boxGeo, boxMat);
-        parcelBox.position.set(0, 1.3, 8);
-        parcelBox.castShadow = true;
-        group.add(parcelBox);
-
-        // Golden Ribbon on Box
-        const ribbonGeo = new THREE.BoxGeometry(1.22, 1.12, 0.2);
-        const ribbonMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, metalness: 0.9 });
-        const ribbon1 = new THREE.Mesh(ribbonGeo, ribbonMat);
-        parcelBox.add(ribbon1);
-        const ribbon2 = ribbon1.clone();
-        ribbon2.rotation.y = Math.PI / 2;
-        parcelBox.add(ribbon2);
-
-        // Holographic Inspection Scanner Beam (oscillating laser sheet)
-        const scanGeo = new THREE.PlaneGeometry(1.8, 2.5);
-        const scanMat = new THREE.MeshBasicMaterial({
-            color: 0x38bdf8,
-            transparent: true,
-            opacity: 0.45,
-            side: THREE.DoubleSide
-        });
-        scannerBeam = new THREE.Mesh(scanGeo, scanMat);
-        scannerBeam.rotation.y = Math.PI / 2;
-        scannerBeam.position.set(0, 1.5, 8);
-        group.add(scannerBeam);
-
-        // Point light on platform
-        const light = new THREE.PointLight(0xd4af37, 1.5, 12);
-        light.position.set(0, 3, 8);
-        group.add(light);
-
-        scene.add(group);
-    }
-
-    // 7. Location 2: Loading Dock & Van (Погружено)
-    function buildLocation2LoadingDock() {
-        const group = new THREE.Group();
-        group.position.set(-12, 0, 2);
-
-        // Loading Dock Structure
-        const dockGeo = new THREE.BoxGeometry(8, 4.2, 6);
-        const dockMat = new THREE.MeshStandardMaterial({ color: 0x1f2334, roughness: 0.5 });
-        const dock = new THREE.Mesh(dockGeo, dockMat);
-        dock.position.set(0, 2.1, -1.5);
-        dock.castShadow = true;
-        dock.receiveShadow = true;
-        group.add(dock);
-
-        // Roll-up shutter door
-        const doorGeo = new THREE.PlaneGeometry(3.6, 3.2);
-        const doorMat = new THREE.MeshStandardMaterial({ color: 0x374151, metalness: 0.7, roughness: 0.4 });
-        const door = new THREE.Mesh(doorGeo, doorMat);
-        door.position.set(0, 1.6, 1.51);
-        group.add(door);
-
-        // Safety Chevron Stripe
-        const chevronGeo = new THREE.BoxGeometry(4.2, 0.35, 0.1);
-        const chevronMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.5 });
-        const chevron = new THREE.Mesh(chevronGeo, chevronMat);
-        chevron.position.set(0, 0.2, 1.56);
-        group.add(chevron);
-
-        // Indicator Lights on Dock
-        for (let i = -1.5; i <= 1.5; i += 3) {
-            const indGeo = new THREE.SphereGeometry(0.15, 8, 8);
-            const indMat = new THREE.MeshBasicMaterial({ color: 0x10b981 });
-            const ind = new THREE.Mesh(indGeo, indMat);
-            ind.position.set(i, 3.4, 1.55);
-            group.add(ind);
-            dockLightBeacons.push(ind);
-        }
-
-        // Delivery Van at the Loading Bay
-        loadingTruck = createDeliveryVan();
-        loadingTruck.position.set(0, 0, 4.5);
-        loadingTruck.rotation.y = Math.PI;
-        group.add(loadingTruck);
-
-        // Moving parcel box being loaded into the van
-        const lBoxGeo = new THREE.BoxGeometry(0.8, 0.7, 0.8);
-        const lBoxMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.7 });
-        loadingBox = new THREE.Mesh(lBoxGeo, lBoxMat);
-        loadingBox.position.set(0, 0.9, 2.5);
-        loadingBox.castShadow = true;
-        group.add(loadingBox);
-
-        scene.add(group);
-    }
-
-    function createDeliveryVan() {
-        const van = new THREE.Group();
-        van.userData.wheels = [];
-
-        // Van Body (Matte Obsidian)
-        const bodyGeo = new THREE.BoxGeometry(2.1, 1.8, 4.6);
-        const bodyMat = new THREE.MeshStandardMaterial({
-            color: 0x11131a,
-            roughness: 0.3,
-            metalness: 0.6
-        });
-        const body = new THREE.Mesh(bodyGeo, bodyMat);
-        body.position.y = 1.35;
-        body.castShadow = true;
-        van.add(body);
-
-        // Cabin windshield
-        const windGeo = new THREE.BoxGeometry(2.02, 0.8, 1.2);
-        const windMat = new THREE.MeshStandardMaterial({
-            color: 0x1e293b,
-            metalness: 0.95,
-            roughness: 0.1
-        });
-        const wind = new THREE.Mesh(windGeo, windMat);
-        wind.position.set(0, 1.55, 1.4);
-        van.add(wind);
-
-        // Gold MODEVA Logo Stripe on both van flanks
-        const stripeGeo = new THREE.BoxGeometry(2.15, 0.35, 2.6);
-        const stripeMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.2 });
-        const stripe = new THREE.Mesh(stripeGeo, stripeMat);
-        stripe.position.set(0, 1.35, -0.6);
-        van.add(stripe);
-
-        // Glowing Headlights
-        const headGeo = new THREE.BoxGeometry(0.4, 0.2, 0.1);
-        const headMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
-        const hl1 = new THREE.Mesh(headGeo, headMat);
-        hl1.position.set(0.7, 0.9, 2.32);
-        van.add(hl1);
-        const hl2 = hl1.clone();
-        hl2.position.x = -0.7;
-        van.add(hl2);
-
-        // Wheels (4 wheels)
-        const wheelGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.35, 16);
-        const wheelMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.9 });
-        wheelGeo.rotateZ(Math.PI / 2);
-
-        const wPositions = [
-            [-1.1, 0.45, 1.3],
-            [1.1, 0.45, 1.3],
-            [-1.1, 0.45, -1.3],
-            [1.1, 0.45, -1.3]
-        ];
-
-        wPositions.forEach(pos => {
-            const w = new THREE.Mesh(wheelGeo, wheelMat);
-            w.position.set(...pos);
-            w.castShadow = true;
-            van.add(w);
-
-            // Gold hubcap
-            const capGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.38, 12);
-            capGeo.rotateZ(Math.PI / 2);
-            const capMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8 });
-            const cap = new THREE.Mesh(capGeo, capMat);
-            cap.position.set(...pos);
-            van.add(cap);
-
-            van.userData.wheels.push(w, cap);
-        });
-
-        return van;
-    }
-
-    // 8. Location 3: Highway & Transit (В пути)
-    function buildLocation3Highway() {
-        // Active Transit Van that drives along the highway
-        transitTruck = createDeliveryVan();
-        transitTruck.scale.set(0.9, 0.9, 0.9);
-        scene.add(transitTruck);
-
-        // Headlight Cones illuminating road
-        const coneGeo = new THREE.ConeGeometry(1.6, 6, 16);
-        coneGeo.rotateX(Math.PI / 2);
-        const coneMat = new THREE.MeshBasicMaterial({
-            color: 0xfef08a,
-            transparent: true,
-            opacity: 0.18,
-            side: THREE.DoubleSide
-        });
-        const headlightCone = new THREE.Mesh(coneGeo, coneMat);
-        headlightCone.position.set(0, 0.8, 4.5);
-        transitTruck.add(headlightCone);
-
-        // Particle trail behind truck
-        const pGeo = new THREE.BufferGeometry();
-        const pCount = 30;
-        const pPositions = new Float32Array(pCount * 3);
-        for (let i = 0; i < pCount * 3; i++) {
-            pPositions[i] = (Math.random() - 0.5) * 2;
-        }
-        pGeo.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
-        const pMat = new THREE.PointsMaterial({
-            color: 0xd4af37,
-            size: 0.25,
-            transparent: true,
-            opacity: 0.7
-        });
-        transitTrailParticles = new THREE.Points(pGeo, pMat);
-        scene.add(transitTrailParticles);
-    }
-
-    // 9. Location 4: Flagship Boutique Destination (Товар прибыл)
-    function buildLocation4Boutique() {
-        const group = new THREE.Group();
-        group.position.set(28, 0, -8);
-
-        // Flagship Building (Cream / Limestone marble with gold trim)
-        const bldgGeo = new THREE.BoxGeometry(9, 6.5, 9);
-        const bldgMat = new THREE.MeshStandardMaterial({
-            color: 0x222533,
-            roughness: 0.35,
-            metalness: 0.3
-        });
-        const bldg = new THREE.Mesh(bldgGeo, bldgMat);
-        bldg.position.y = 3.25;
-        bldg.castShadow = true;
-        bldg.receiveShadow = true;
-        group.add(bldg);
-
-        // Panoramic Glass Front
-        const glassGeo = new THREE.BoxGeometry(7, 3.2, 0.2);
-        const glassMat = new THREE.MeshStandardMaterial({
-            color: 0xfef08a,
-            emissive: 0xd4af37,
-            emissiveIntensity: 0.4,
-            roughness: 0.1,
-            metalness: 0.95
-        });
-        const glass = new THREE.Mesh(glassGeo, glassMat);
-        glass.position.set(0, 1.8, 4.55);
-        group.add(glass);
-
-        // Champagne Gold Canopy / Awning
-        const canopyGeo = new THREE.BoxGeometry(7.5, 0.4, 2.2);
-        const canopyMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.85, roughness: 0.2 });
-        const canopy = new THREE.Mesh(canopyGeo, canopyMat);
-        canopy.position.set(0, 3.6, 5.2);
-        canopy.rotation.x = THREE.MathUtils.degToRad(8);
-        canopy.castShadow = true;
-        group.add(canopy);
-
-        // MODEVA Flagship Crown Sign
-        const crownGeo = new THREE.BoxGeometry(4.2, 0.7, 0.15);
-        const crownMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.95 });
-        const crown = new THREE.Mesh(crownGeo, crownMat);
-        crown.position.set(0, 5.5, 4.56);
-        group.add(crown);
-
-        // Pulsing Destination Holographic Beacon Rings
-        const beaconGeo = new THREE.RingGeometry(0.8, 1.8, 32);
-        beaconGeo.rotateX(-Math.PI / 2);
-        const beaconMat = new THREE.MeshBasicMaterial({
-            color: 0x10b981,
-            transparent: true,
-            opacity: 0.75,
-            side: THREE.DoubleSide
-        });
-        boutiqueBeacon = new THREE.Mesh(beaconGeo, beaconMat);
-        boutiqueBeacon.position.set(0, 0.08, 6.8);
-        group.add(boutiqueBeacon);
-
-        // Floating Golden Checkmark Beacon above building
-        const checkGroup = new THREE.Group();
-        checkGroup.position.set(0, 8.2, 0);
-
-        const check1 = new THREE.Mesh(
-            new THREE.BoxGeometry(0.4, 1.2, 0.4),
-            new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x059669, emissiveIntensity: 0.6 })
-        );
-        check1.rotation.z = THREE.MathUtils.degToRad(-35);
-        check1.position.set(-0.35, 0, 0);
-        checkGroup.add(check1);
-
-        const check2 = new THREE.Mesh(
-            new THREE.BoxGeometry(0.4, 2.2, 0.4),
-            new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x059669, emissiveIntensity: 0.6 })
-        );
-        check2.rotation.z = THREE.MathUtils.degToRad(45);
-        check2.position.set(0.55, 0.35, 0);
-        checkGroup.add(check2);
-
-        boutiqueCheckmark = checkGroup;
-        group.add(boutiqueCheckmark);
-
-        // Warm entrance light
-        const eLight = new THREE.PointLight(0xfef08a, 2.0, 14);
-        eLight.position.set(0, 3.2, 6);
-        group.add(eLight);
-
-        scene.add(group);
-    }
-
-    // 10. Animation Loop
-    function animate() {
-        requestAnimationFrame(animate);
-
-        const time = clock.getElapsedTime();
-
-        // 1. Warehouse Animation (Pulsing box & oscillating scanner beam)
-        if (parcelBox) {
-            parcelBox.position.y = 1.3 + Math.sin(time * 2.5) * 0.12;
-            parcelBox.rotation.y = time * 0.3;
-        }
-        if (scannerBeam) {
-            scannerBeam.position.z = 8 + Math.sin(time * 3.5) * 0.6;
-        }
-
-        // 2. Loading Dock Animation (Loading box slide & dock beacon blink)
-        if (loadingBox) {
-            const slideT = (Math.sin(time * 1.8) + 1) / 2;
-            loadingBox.position.z = 2.0 + slideT * 1.8;
-            loadingBox.position.y = 0.9 + Math.sin(time * 3) * 0.05;
-        }
-        dockLightBeacons.forEach((b, idx) => {
-            b.material.color.setHex((Math.sin(time * 4 + idx) > 0) ? 0x10b981 : 0xd4af37);
-        });
-
-        // 3. Highway Transit Animation (Van cruises smoothly along spline)
-        if (transitTruck && roadSpline) {
-            const loopDuration = 12.0;
-            const t = (time % loopDuration) / loopDuration;
-            const pt = roadSpline.getPointAt(t);
-            const tangent = roadSpline.getTangentAt(t).normalize();
-
-            transitTruck.position.copy(pt);
-            transitTruck.position.y = 0.05;
-
-            // Align rotation with road tangent
-            const angle = Math.atan2(tangent.x, tangent.z);
-            transitTruck.rotation.y = angle;
-
-            // Spin van wheels while traveling
-            if (transitTruck.userData && transitTruck.userData.wheels) {
-                transitTruck.userData.wheels.forEach(wheelMesh => {
-                    wheelMesh.rotation.x += 0.24;
-                });
-            }
-
-            // Trail particles following truck
-            if (transitTrailParticles) {
-                transitTrailParticles.position.copy(pt);
-                transitTrailParticles.position.y = 0.3;
-                transitTrailParticles.rotation.y = time * 2;
-            }
-        }
-
-        // 4. Boutique Destination Animation (Pulsing beacon & floating checkmark)
-        if (boutiqueBeacon) {
-            const s = 1.0 + Math.sin(time * 3) * 0.25;
-            boutiqueBeacon.scale.set(s, s, s);
-            boutiqueBeacon.material.opacity = 0.4 + Math.sin(time * 3) * 0.35;
-        }
-        if (boutiqueCheckmark) {
-            boutiqueCheckmark.position.y = 8.2 + Math.sin(time * 2) * 0.25;
-            boutiqueCheckmark.rotation.y = time * 0.8;
-        }
-
-        // Subtle gentle cinematic breathing parallax on camera
-        if (autoFollow) {
-            camera.position.x += Math.sin(time * 0.5) * 0.003;
-            camera.position.y += Math.cos(time * 0.7) * 0.002;
-        }
-
-        camera.lookAt(lookTarget);
-        renderer.render(scene, camera);
-    }
-
-    // 11. GSAP Camera & Scene Transitions
-    function transitionToStage(stageNum) {
-        currentStage = Math.max(1, Math.min(4, stageNum));
-        const cfg = STAGES_INFO[currentStage];
-        if (!cfg) return;
-
-        // Animate Camera Position
-        gsap.to(camera.position, {
-            duration: 1.8,
-            x: cfg.camera.x,
-            y: cfg.camera.y,
-            z: cfg.camera.z,
-            ease: "power2.inOut"
-        });
-
-        // Animate LookAt Target
-        gsap.to(lookTarget, {
-            duration: 1.8,
-            x: cfg.target.x,
-            y: cfg.target.y,
-            z: cfg.target.z,
-            ease: "power2.inOut"
-        });
-
-        // Update UI
-        updateUI(currentStage);
-    }
-
-    function updateUI(stageNum) {
-        const cfg = STAGES_INFO[stageNum];
-        if (!cfg) return;
-
-        // 1. Stepper Progress fill percentage
-        const fillPercentages = { 1: 0, 2: 33.3, 3: 66.6, 4: 100 };
-        const fillEl = document.getElementById('stepperTrackFill');
-        if (fillEl) {
-            fillEl.style.width = (fillPercentages[stageNum] || 0) + '%';
-        }
-
-        // 2. Stepper nodes state
-        for (let i = 1; i <= 4; i++) {
-            const node = document.getElementById('stepNode' + i);
-            if (node) {
-                node.classList.remove('active', 'completed');
-                if (i < stageNum) {
-                    node.classList.add('completed');
-                } else if (i === stageNum) {
-                    node.classList.add('active');
-                }
-            }
-        }
-
-        // 3. Card Title & Description
-        const titleEl = document.getElementById('cardTitle');
-        const descEl = document.getElementById('cardDesc');
-        const stageBadgeEl = document.getElementById('cardStageKey');
-
-        if (titleEl && descEl && stageBadgeEl) {
-            gsap.to([titleEl, descEl], {
-                opacity: 0,
-                y: -6,
-                duration: 0.2,
-                onComplete: () => {
-                    titleEl.textContent = cfg.name;
-                    descEl.textContent = cfg.desc;
-                    stageBadgeEl.textContent = `ЭТАП ${stageNum} ИЗ 4: ${cfg.subtitle.toUpperCase()}`;
-                    gsap.to([titleEl, descEl], { opacity: 1, y: 0, duration: 0.35 });
-                }
-            });
-        }
-
-        // 4. Camera view buttons active state
-        for (let i = 1; i <= 4; i++) {
-            const btn = document.getElementById('camBtn' + i);
-            if (btn) btn.classList.toggle('active', i === stageNum && !autoFollow);
-        }
-        const autoBtn = document.getElementById('camBtnAuto');
-        if (autoBtn) autoBtn.classList.toggle('active', autoFollow);
-    }
-
-    // --- 🎵 Web Audio API Luxury Chime Synthesizer ---
+    // Sound Synthesizer via Web Audio API
     let audioEnabled = true;
 
     function playStageChime(stageNum) {
         if (!audioEnabled) return;
         try {
-            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContextClass) return;
-            const ctx = new AudioContextClass();
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            const ctx = new AudioCtx();
             const now = ctx.currentTime;
             
-            // Harmonic luxury chord frequencies for each delivery stage
+            // Harmonic luxury crystal triad chords matching each station
             const stageHarmonics = {
-                1: [261.63, 329.63, 392.00],        // C-major triad (Warm warehouse preparation)
-                2: [293.66, 369.99, 440.00],        // D-major triad (Dock loading and sealing)
-                3: [329.63, 415.30, 493.88],        // E-major triad (Speed and highway cruise)
-                4: [392.00, 493.88, 587.33, 783.99] // G-major triumph (Delivered to flagship boutique)
+                1: [261.63, 329.63, 392.00],        // C4, E4, G4 (На складе)
+                2: [293.66, 369.99, 440.00],        // D4, F#4, A4 (Погрузка)
+                3: [329.63, 415.30, 493.88],        // E4, G#4, B4 (В пути)
+                4: [392.00, 493.88, 587.33, 783.99] // G4, B4, D5, G5 (На месте - Triumph)
             };
             const notes = stageHarmonics[stageNum] || [440, 554, 659];
             
@@ -1485,7 +787,802 @@
         if (audioEnabled) playStageChime(currentStage);
     };
 
-    // --- 🎮 Interactive Smooth Orbit & Zoom Controls ---
+    // 3. Scene Initialization
+    function init3D() {
+        const container = document.getElementById('tracking3DViewport');
+        const canvas = document.getElementById('trackingCanvas');
+        if (!container || !canvas) return;
+
+        const width = container.clientWidth || 800;
+        const height = container.clientHeight || 600;
+
+        // Scene
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0c0e16);
+        scene.fog = new THREE.FogExp2(0x0c0e16, 0.012);
+
+        // Camera
+        camera = new THREE.PerspectiveCamera(45, width / height, 0.5, 500);
+        
+        // Start in full overview or active stage
+        const initialCfg = STAGES_INFO[currentStage] || STAGES_INFO[1];
+        camera.position.set(OVERVIEW_CAMERA.camera.x, OVERVIEW_CAMERA.camera.y, OVERVIEW_CAMERA.camera.z);
+        lookTarget.set(OVERVIEW_CAMERA.target.x, OVERVIEW_CAMERA.target.y, OVERVIEW_CAMERA.target.z);
+        camera.lookAt(lookTarget);
+
+        // Renderer
+        renderer = new THREE.WebGLRenderer({
+            canvas: canvas,
+            antialias: true,
+            powerPreference: 'high-performance'
+        });
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        // Lighting
+        buildLighting();
+
+        // Build Environment, Linear Track & 4 Circular Pedestals (O ─── O ─── O ─── O)
+        buildTerrainAndLinearTrack();
+        buildStation1Warehouse();
+        buildStation2Loading();
+        buildStation3Transit();
+        buildStation4Delivered();
+        buildTravelingCapsule();
+
+        // Setup Mouse & Touch Smooth Orbit Controls
+        setupInteractiveOrbitControls(canvas);
+
+        // Responsive resize
+        window.addEventListener('resize', onWindowResize);
+
+        // Hide loader
+        const loader = document.getElementById('trackingLoader');
+        if (loader) {
+            setTimeout(() => {
+                loader.style.opacity = '0';
+                setTimeout(() => loader.style.display = 'none', 600);
+            }, 300);
+        }
+
+        isInitialized = true;
+        animate();
+        updateUI(currentStage);
+
+        // Smooth glide to current active stage after initial glance
+        setTimeout(() => {
+            if (autoFollow) {
+                transitionToStage(currentStage);
+            }
+        }, 1200);
+    }
+
+    // 4. Lighting System
+    function buildLighting() {
+        const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+        scene.add(ambient);
+
+        const mainLight = new THREE.DirectionalLight(0xfff5e6, 1.2);
+        mainLight.position.set(15, 30, 25);
+        mainLight.castShadow = true;
+        mainLight.shadow.mapSize.width = 2048;
+        mainLight.shadow.mapSize.height = 2048;
+        mainLight.shadow.bias = -0.0005;
+        scene.add(mainLight);
+
+        // Rim Light from back
+        const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.5);
+        rimLight.position.set(-20, 20, -25);
+        scene.add(rimLight);
+    }
+
+    // 5. Environment & Linear Track (The "O ─── O ─── O ─── O" Foundation)
+    function buildTerrainAndLinearTrack() {
+        // Base ground plane
+        const groundGeo = new THREE.PlaneGeometry(120, 70);
+        const groundMat = new THREE.MeshStandardMaterial({
+            color: 0x0e1019,
+            roughness: 0.85,
+            metalness: 0.15
+        });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Subtle luxury neon grid
+        const grid = new THREE.GridHelper(100, 50, 0x1f2438, 0x131622);
+        grid.position.y = 0.02;
+        scene.add(grid);
+
+        // Continuous Dual Rails connecting all stations
+        const railGeo = new THREE.BoxGeometry(46, 0.12, 0.12);
+        const railMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9, roughness: 0.2 });
+        
+        const rail1 = new THREE.Mesh(railGeo, railMat);
+        rail1.position.set(0, 0.35, 1.2);
+        scene.add(rail1);
+
+        const rail2 = new THREE.Mesh(railGeo, railMat);
+        rail2.position.set(0, 0.35, -1.2);
+        scene.add(rail2);
+
+        // 3 Connecting Neon Laser Beams between the 4 nodes:
+        // Segment 1: -21 to -7 (center at -14)
+        // Segment 2: -7 to +7 (center at 0)
+        // Segment 3: +7 to +21 (center at +14)
+        const segmentCoords = [
+            { id: 1, startX: -21, endX: -7, midX: -14 },
+            { id: 2, startX: -7, endX: 7, midX: 0 },
+            { id: 3, startX: 7, endX: 21, midX: 14 }
+        ];
+
+        segmentCoords.forEach(seg => {
+            const beamGroup = new THREE.Group();
+            beamGroup.position.set(seg.midX, 0.35, 0);
+
+            // Glowing central tube
+            const beamGeo = new THREE.CylinderGeometry(0.12, 0.12, 14, 16);
+            beamGeo.rotateZ(Math.PI / 2);
+            const beamMat = new THREE.MeshBasicMaterial({
+                color: (currentStage > seg.id) ? 0x10b981 : 0x222738,
+                transparent: true,
+                opacity: (currentStage > seg.id) ? 0.9 : 0.35
+            });
+            const beamMesh = new THREE.Mesh(beamGeo, beamMat);
+            beamGroup.add(beamMesh);
+
+            // Ground glow projection ribbon
+            const ribbonGeo = new THREE.PlaneGeometry(14, 0.8);
+            ribbonGeo.rotateX(-Math.PI / 2);
+            const ribbonMat = new THREE.MeshBasicMaterial({
+                color: 0x10b981,
+                transparent: true,
+                opacity: (currentStage > seg.id) ? 0.35 : 0.05
+            });
+            const ribbon = new THREE.Mesh(ribbonGeo, ribbonMat);
+            ribbon.position.y = 0.03;
+            beamGroup.add(ribbon);
+
+            scene.add(beamGroup);
+            trackSegments.push({ id: seg.id, beamMesh, ribbonMat, beamMat });
+        });
+
+        // Build the 4 circular pedestals (O 1, O 2, O 3, O 4)
+        for (let i = 1; i <= 4; i++) {
+            const cfg = STAGES_INFO[i];
+            const nodeGroup = createCircularPedestal(i, cfg.xPos);
+            scene.add(nodeGroup);
+            stationNodes[i] = nodeGroup;
+        }
+    }
+
+    // Helper: Create 3D Circular Pedestal (The "O")
+    function createCircularPedestal(stageNum, xPos) {
+        const group = new THREE.Group();
+        group.position.set(xPos, 0, 0);
+
+        const isActive = (stageNum === currentStage);
+        const isCompleted = (stageNum < currentStage);
+
+        // 1. Outer Neon Ring on the ground (The green/gold circle in user sketch!)
+        const ringGeo = new THREE.RingGeometry(3.6, 4.2, 48);
+        ringGeo.rotateX(-Math.PI / 2);
+        const ringMat = new THREE.MeshBasicMaterial({
+            color: (isActive || isCompleted) ? 0x10b981 : 0x2a3045,
+            transparent: true,
+            opacity: isActive ? 0.95 : (isCompleted ? 0.75 : 0.25),
+            side: THREE.DoubleSide
+        });
+        const outerRing = new THREE.Mesh(ringGeo, ringMat);
+        outerRing.position.y = 0.04;
+        group.add(outerRing);
+
+        // 2. Heavy Obsidian & Glass Platform Base
+        const cylGeo = new THREE.CylinderGeometry(3.4, 3.7, 0.6, 48);
+        const cylMat = new THREE.MeshStandardMaterial({
+            color: 0x151824,
+            roughness: 0.3,
+            metalness: 0.8
+        });
+        const platform = new THREE.Mesh(cylGeo, cylMat);
+        platform.position.y = 0.3;
+        platform.receiveShadow = true;
+        platform.castShadow = true;
+        group.add(platform);
+
+        // 3. Gold Trim Ring around platform rim
+        const trimGeo = new THREE.TorusGeometry(3.42, 0.06, 12, 48);
+        trimGeo.rotateX(Math.PI / 2);
+        const trimMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.2 });
+        const trim = new THREE.Mesh(trimGeo, trimMat);
+        trim.position.y = 0.6;
+        group.add(trim);
+
+        // 4. Inner Platform Core Glow
+        const coreGeo = new THREE.CircleGeometry(2.8, 32);
+        coreGeo.rotateX(-Math.PI / 2);
+        const coreMat = new THREE.MeshBasicMaterial({
+            color: isActive ? 0x10b981 : 0x1a2133,
+            transparent: true,
+            opacity: isActive ? 0.35 : 0.15
+        });
+        const core = new THREE.Mesh(coreGeo, coreMat);
+        core.position.y = 0.61;
+        group.add(core);
+
+        // 5. Stage Number & Title Label under the circle (like sketch)
+        // Stored on group for real-time color updating
+        group.userData = {
+            stageNum: stageNum,
+            outerRing: outerRing,
+            outerRingMat: ringMat,
+            coreMesh: core,
+            coreMat: coreMat
+        };
+
+        return group;
+    }
+
+    // 6. Station 1 Diorama: «На складе» (Gift Box, Holographic Scanner)
+    function buildStation1Warehouse() {
+        const group = stationNodes[1];
+        if (!group) return;
+
+        // Premium Luxury MODEVA Gift Box
+        const boxGroup = new THREE.Group();
+        boxGroup.position.set(0, 1.8, 0);
+
+        const bGeo = new THREE.BoxGeometry(2.2, 1.8, 2.2);
+        const bMat = new THREE.MeshStandardMaterial({
+            color: 0x11131c,
+            roughness: 0.35,
+            metalness: 0.5
+        });
+        const mainBox = new THREE.Mesh(bGeo, bMat);
+        mainBox.castShadow = true;
+        boxGroup.add(mainBox);
+
+        // Gold Silk Ribbon (Cross)
+        const rib1 = new THREE.Mesh(
+            new THREE.BoxGeometry(2.24, 1.84, 0.45),
+            new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.2 })
+        );
+        boxGroup.add(rib1);
+
+        const rib2 = new THREE.Mesh(
+            new THREE.BoxGeometry(0.45, 1.84, 2.24),
+            new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.2 })
+        );
+        boxGroup.add(rib2);
+
+        // Gold Bow on top
+        const bow = new THREE.Mesh(
+            new THREE.SphereGeometry(0.35, 16, 16),
+            new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.95, roughness: 0.15 })
+        );
+        bow.position.y = 1.05;
+        bow.scale.set(1.4, 0.6, 1.4);
+        boxGroup.add(bow);
+
+        parcelBox = boxGroup;
+        group.add(parcelBox);
+
+        // Oscillating Vertical Laser Scanner Beam
+        const scanGeo = new THREE.PlaneGeometry(3.2, 3.2);
+        scanGeo.rotateX(Math.PI / 2);
+        const scanMat = new THREE.MeshBasicMaterial({
+            color: 0x10b981,
+            transparent: true,
+            opacity: 0.45,
+            side: THREE.DoubleSide
+        });
+        scannerBeam = new THREE.Mesh(scanGeo, scanMat);
+        scannerBeam.position.y = 1.8;
+        group.add(scannerBeam);
+
+        // Floating Gold Security Stamp Particles
+        const pGeo = new THREE.BufferGeometry();
+        const pCount = 20;
+        const pPos = new Float32Array(pCount * 3);
+        for (let i = 0; i < pCount; i++) {
+            const angle = (i / pCount) * Math.PI * 2;
+            pPos[i * 3] = Math.cos(angle) * 1.8;
+            pPos[i * 3 + 1] = 1.2 + (i % 5) * 0.25;
+            pPos[i * 3 + 2] = Math.sin(angle) * 1.8;
+        }
+        pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+        const pMat = new THREE.PointsMaterial({ color: 0xd4af37, size: 0.15, transparent: true, opacity: 0.8 });
+        const particles = new THREE.Points(pGeo, pMat);
+        group.add(particles);
+    }
+
+    // 7. Station 2 Diorama: «Погрузка» (Conveyor Belt, Cargo Bay, Blinking Lights)
+    function buildStation2Loading() {
+        const group = stationNodes[2];
+        if (!group) return;
+
+        // Conveyor Platform
+        const convGeo = new THREE.BoxGeometry(4.2, 0.3, 1.6);
+        const convMat = new THREE.MeshStandardMaterial({ color: 0x222738, roughness: 0.6, metalness: 0.5 });
+        const conv = new THREE.Mesh(convGeo, convMat);
+        conv.position.set(0, 0.8, 0);
+        conv.castShadow = true;
+        group.add(conv);
+
+        // Conveyor Rollers (gold stripes)
+        for (let i = -1.8; i <= 1.8; i += 0.6) {
+            const r = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.06, 0.06, 1.5, 8),
+                new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8 })
+            );
+            r.rotation.x = Math.PI / 2;
+            r.position.set(i, 0.96, 0);
+            group.add(r);
+        }
+
+        // Sliding Cargo Box
+        const cBoxGeo = new THREE.BoxGeometry(1.0, 0.8, 1.0);
+        const cBoxMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.4, metalness: 0.6 });
+        const box1 = new THREE.Mesh(cBoxGeo, cBoxMat);
+        box1.position.set(-0.8, 1.45, 0);
+        box1.castShadow = true;
+        group.add(box1);
+        loadingBoxes.push(box1);
+
+        const box2 = new THREE.Mesh(
+            new THREE.BoxGeometry(0.8, 0.7, 0.8),
+            new THREE.MeshStandardMaterial({ color: 0x1e2433, roughness: 0.3 })
+        );
+        box2.position.set(1.0, 1.35, 0);
+        group.add(box2);
+        loadingBoxes.push(box2);
+
+        // Safety Beacon Poles (Flashing Green & Amber)
+        [-1.8, 1.8].forEach((xOffset, idx) => {
+            const pole = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.05, 0.05, 1.8, 8),
+                new THREE.MeshStandardMaterial({ color: 0x334155 })
+            );
+            pole.position.set(xOffset, 1.5, -1.2);
+            group.add(pole);
+
+            const light = new THREE.Mesh(
+                new THREE.SphereGeometry(0.18, 12, 12),
+                new THREE.MeshBasicMaterial({ color: idx === 0 ? 0x10b981 : 0xd4af37 })
+            );
+            light.position.set(xOffset, 2.4, -1.2);
+            group.add(light);
+            dockLights.push(light);
+        });
+    }
+
+    // 8. Station 3 Diorama: «В пути» (MODEVA Luxury Express Van with Spinning Wheels)
+    function buildStation3Transit() {
+        const group = stationNodes[3];
+        if (!group) return;
+
+        // Highway strip on top of pedestal
+        const road = new THREE.Mesh(
+            new THREE.BoxGeometry(5.2, 0.15, 2.2),
+            new THREE.MeshStandardMaterial({ color: 0x181b26, roughness: 0.8 })
+        );
+        road.position.set(0, 0.7, 0);
+        road.receiveShadow = true;
+        group.add(road);
+
+        // Dashed center line
+        for (let x = -2.0; x <= 2.0; x += 1.0) {
+            const dash = new THREE.Mesh(
+                new THREE.PlaneGeometry(0.5, 0.12),
+                new THREE.MeshBasicMaterial({ color: 0xfef08a })
+            );
+            dash.rotation.x = -Math.PI / 2;
+            dash.position.set(x, 0.78, 0);
+            group.add(dash);
+        }
+
+        // Active Delivery Van
+        const van = new THREE.Group();
+        van.position.set(0, 0.78, 0);
+
+        // Body
+        const bodyGeo = new THREE.BoxGeometry(2.8, 1.3, 1.4);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x11131a, roughness: 0.3, metalness: 0.7 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 1.0;
+        body.castShadow = true;
+        van.add(body);
+
+        // Windshield
+        const windGeo = new THREE.BoxGeometry(0.8, 0.7, 1.36);
+        const windMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.95, roughness: 0.1 });
+        const wind = new THREE.Mesh(windGeo, windMat);
+        wind.position.set(0.9, 1.25, 0);
+        van.add(wind);
+
+        // Gold Stripe
+        const stripe = new THREE.Mesh(
+            new THREE.BoxGeometry(1.6, 0.25, 1.44),
+            new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.2 })
+        );
+        stripe.position.set(-0.4, 1.0, 0);
+        van.add(stripe);
+
+        // Headlights
+        const hl1 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.2, 0.3), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+        hl1.position.set(1.42, 0.75, 0.4);
+        van.add(hl1);
+        const hl2 = hl1.clone();
+        hl2.position.z = -0.4;
+        van.add(hl2);
+
+        // Headlight Cone Light
+        const coneGeo = new THREE.ConeGeometry(1.2, 4.0, 16);
+        coneGeo.rotateZ(-Math.PI / 2);
+        const coneMat = new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.2, side: THREE.DoubleSide });
+        transitHeadlight = new THREE.Mesh(coneGeo, coneMat);
+        transitHeadlight.position.set(3.4, 0.75, 0);
+        van.add(transitHeadlight);
+
+        // Spinning Wheels (4 wheels)
+        const wheelGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.25, 16);
+        wheelGeo.rotateX(Math.PI / 2);
+        const wheelMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.9 });
+        const capMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.85 });
+
+        const wheelPositions = [
+            [0.85, 0.35, 0.72],
+            [0.85, 0.35, -0.72],
+            [-0.85, 0.35, 0.72],
+            [-0.85, 0.35, -0.72]
+        ];
+
+        wheelPositions.forEach(pos => {
+            const wMesh = new THREE.Mesh(wheelGeo, wheelMat);
+            wMesh.position.set(...pos);
+            van.add(wMesh);
+
+            const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.28, 12), capMat);
+            cap.rotation.x = Math.PI / 2;
+            cap.position.set(...pos);
+            van.add(cap);
+
+            transitWheels.push(wMesh, cap);
+        });
+
+        transitVan = van;
+        group.add(transitVan);
+    }
+
+    // 9. Station 4 Diorama: «На месте» (Boutique Entrance, VIP Beacon, Floating Checkmark)
+    function buildStation4Delivered() {
+        const group = stationNodes[4];
+        if (!group) return;
+
+        // Boutique Building Façade
+        const bldgGeo = new THREE.BoxGeometry(4.6, 4.2, 2.4);
+        const bldgMat = new THREE.MeshStandardMaterial({ color: 0x181a26, roughness: 0.4, metalness: 0.5 });
+        const bldg = new THREE.Mesh(bldgGeo, bldgMat);
+        bldg.position.set(0, 2.7, -0.5);
+        bldg.castShadow = true;
+        group.add(bldg);
+
+        // Welcoming Glass Storefront
+        const glass = new THREE.Mesh(
+            new THREE.PlaneGeometry(3.6, 2.2),
+            new THREE.MeshStandardMaterial({
+                color: 0xfef08a,
+                emissive: 0xd4af37,
+                emissiveIntensity: 0.45,
+                roughness: 0.1,
+                metalness: 0.9
+            })
+        );
+        glass.position.set(0, 1.8, 0.72);
+        group.add(glass);
+
+        // Champagne Gold Canopy / Awning
+        const canopy = new THREE.Mesh(
+            new THREE.BoxGeometry(4.0, 0.25, 1.4),
+            new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.2 })
+        );
+        canopy.position.set(0, 3.0, 1.2);
+        canopy.rotation.x = THREE.MathUtils.degToRad(8);
+        canopy.castShadow = true;
+        group.add(canopy);
+
+        // Crown Signboard
+        const sign = new THREE.Mesh(
+            new THREE.BoxGeometry(2.4, 0.5, 0.1),
+            new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.95 })
+        );
+        sign.position.set(0, 4.2, 0.72);
+        group.add(sign);
+
+        // Floating Green Checkmark (Arrival Triumphant Badge)
+        const checkGroup = new THREE.Group();
+        checkGroup.position.set(0, 5.8, 0.5);
+
+        const ch1 = new THREE.Mesh(
+            new THREE.BoxGeometry(0.3, 1.0, 0.3),
+            new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x059669, emissiveIntensity: 0.8 })
+        );
+        ch1.rotation.z = THREE.MathUtils.degToRad(-35);
+        ch1.position.set(-0.25, 0, 0);
+        checkGroup.add(ch1);
+
+        const ch2 = new THREE.Mesh(
+            new THREE.BoxGeometry(0.3, 1.8, 0.3),
+            new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x059669, emissiveIntensity: 0.8 })
+        );
+        ch2.rotation.z = THREE.MathUtils.degToRad(45);
+        ch2.position.set(0.45, 0.3, 0);
+        checkGroup.add(ch2);
+
+        boutiqueCheckmark = checkGroup;
+        group.add(boutiqueCheckmark);
+
+        // Pulsing Arrival Floor Ring
+        const beaconGeo = new THREE.RingGeometry(1.2, 2.2, 32);
+        beaconGeo.rotateX(-Math.PI / 2);
+        const beaconMat = new THREE.MeshBasicMaterial({ color: 0x10b981, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
+        boutiqueBeacon = new THREE.Mesh(beaconGeo, beaconMat);
+        boutiqueBeacon.position.set(0, 0.65, 1.4);
+        group.add(boutiqueBeacon);
+    }
+
+    // 10. Traveling Delivery Capsule (Travels along the straight bridge)
+    function buildTravelingCapsule() {
+        const group = new THREE.Group();
+        
+        // Glowing Capsule
+        const capGeo = new THREE.SphereGeometry(0.45, 16, 16);
+        capGeo.scale(1.6, 0.8, 0.8);
+        const capMat = new THREE.MeshStandardMaterial({
+            color: 0xfef08a,
+            emissive: 0xd4af37,
+            emissiveIntensity: 0.8,
+            metalness: 0.9
+        });
+        const mesh = new THREE.Mesh(capGeo, capMat);
+        group.add(mesh);
+
+        // Halo aura
+        const auraGeo = new THREE.SphereGeometry(0.7, 16, 16);
+        const auraMat = new THREE.MeshBasicMaterial({
+            color: 0x10b981,
+            transparent: true,
+            opacity: 0.4
+        });
+        const aura = new THREE.Mesh(auraGeo, auraMat);
+        group.add(aura);
+
+        const startX = STAGES_INFO[currentStage] ? STAGES_INFO[currentStage].xPos : -21;
+        group.position.set(startX, 0.7, 0);
+        travelingCapsule = group;
+        scene.add(travelingCapsule);
+    }
+
+    // 11. Animation Loop
+    function animate() {
+        requestAnimationFrame(animate);
+
+        const time = clock.getElapsedTime();
+
+        // 1. Station 1: Warehouse Gift Box hover & scanner beam oscillate
+        if (parcelBox) {
+            parcelBox.position.y = 1.8 + Math.sin(time * 2.2) * 0.12;
+            parcelBox.rotation.y = time * 0.35;
+        }
+        if (scannerBeam) {
+            scannerBeam.position.y = 1.8 + Math.sin(time * 3.5) * 0.75;
+        }
+
+        // 2. Station 2: Loading Boxes conveyor slide & beacon light flash
+        if (loadingBoxes.length >= 2) {
+            loadingBoxes[0].position.x = -1.2 + ((time * 0.8) % 2.4);
+            loadingBoxes[1].position.y = 1.35 + Math.sin(time * 3.0) * 0.04;
+        }
+        dockLights.forEach((light, i) => {
+            light.material.color.setHex((Math.sin(time * 5 + i * 2) > 0) ? 0x10b981 : 0xd4af37);
+        });
+
+        // 3. Station 3: Van suspension vibration & continuous spinning wheels
+        if (transitVan) {
+            transitVan.position.y = 0.78 + Math.sin(time * 8.0) * 0.02;
+        }
+        transitWheels.forEach(w => {
+            w.rotation.x += 0.22;
+        });
+
+        // 4. Station 4: Arrival Checkmark float & beacon pulse
+        if (boutiqueCheckmark) {
+            boutiqueCheckmark.position.y = 5.8 + Math.sin(time * 2.5) * 0.2;
+            boutiqueCheckmark.rotation.y = time * 0.75;
+        }
+        if (boutiqueBeacon) {
+            const s = 1.0 + Math.sin(time * 3.0) * 0.25;
+            boutiqueBeacon.scale.set(s, s, s);
+            boutiqueBeacon.material.opacity = 0.45 + Math.sin(time * 3.0) * 0.3;
+        }
+
+        // 5. Active Node Pulsing Holographic Ring
+        for (let i = 1; i <= 4; i++) {
+            const node = stationNodes[i];
+            if (node && node.userData) {
+                if (i === currentStage) {
+                    const pulse = 1.0 + Math.sin(time * 3.5) * 0.08;
+                    node.userData.outerRing.scale.set(pulse, pulse, pulse);
+                    node.userData.outerRingMat.opacity = 0.75 + Math.sin(time * 3.5) * 0.25;
+                } else if (i < currentStage) {
+                    node.userData.outerRing.scale.set(1, 1, 1);
+                    node.userData.outerRingMat.opacity = 0.7;
+                } else {
+                    node.userData.outerRing.scale.set(1, 1, 1);
+                    node.userData.outerRingMat.opacity = 0.25;
+                }
+            }
+        }
+
+        // Camera auto breathing in auto mode
+        if (autoFollow) {
+            camera.position.y += Math.sin(time * 0.6) * 0.003;
+        }
+
+        camera.lookAt(lookTarget);
+        renderer.render(scene, camera);
+    }
+
+    // 12. GSAP Camera & Stage Transitions
+    function transitionToStage(stageNum) {
+        currentStage = Math.max(1, Math.min(4, stageNum));
+        const cfg = STAGES_INFO[currentStage];
+        if (!cfg) return;
+
+        // Animate Camera Position
+        gsap.to(camera.position, {
+            duration: 1.6,
+            x: cfg.camera.x,
+            y: cfg.camera.y,
+            z: cfg.camera.z,
+            ease: "power2.inOut"
+        });
+
+        // Animate LookAt Target
+        gsap.to(lookTarget, {
+            duration: 1.6,
+            x: cfg.target.x,
+            y: cfg.target.y,
+            z: cfg.target.z,
+            ease: "power2.inOut"
+        });
+
+        // Animate Traveling Capsule along the line to target station
+        if (travelingCapsule) {
+            gsap.to(travelingCapsule.position, {
+                duration: 1.6,
+                x: cfg.xPos,
+                ease: "power2.inOut"
+            });
+        }
+
+        // Update beam segments illumination up to current stage
+        trackSegments.forEach(seg => {
+            const isSegActive = (currentStage > seg.id);
+            gsap.to(seg.beamMat, {
+                opacity: isSegActive ? 0.9 : 0.3,
+                duration: 0.8
+            });
+            seg.beamMat.color.setHex(isSegActive ? 0x10b981 : 0x222738);
+            gsap.to(seg.ribbonMat, {
+                opacity: isSegActive ? 0.35 : 0.05,
+                duration: 0.8
+            });
+        });
+
+        // Update Node Rings Colors
+        for (let i = 1; i <= 4; i++) {
+            const node = stationNodes[i];
+            if (node && node.userData) {
+                const isAct = (i === currentStage);
+                const isComp = (i < currentStage);
+                node.userData.outerRingMat.color.setHex((isAct || isComp) ? 0x10b981 : 0x2a3045);
+            }
+        }
+
+        // Update 2D UI
+        updateUI(currentStage);
+    }
+
+    function updateUI(stageNum) {
+        const cfg = STAGES_INFO[stageNum];
+        if (!cfg) return;
+
+        // 1. Stepper Progress fill percentage matching O ─── O ─── O ─── O
+        const fillPercentages = { 1: 0, 2: 33.3, 3: 66.6, 4: 100 };
+        const fillEl = document.getElementById('stepperTrackFill');
+        if (fillEl) {
+            fillEl.style.width = (fillPercentages[stageNum] || 0) + '%';
+        }
+
+        // 2. Stepper nodes state
+        for (let i = 1; i <= 4; i++) {
+            const node = document.getElementById('stepNode' + i);
+            if (node) {
+                node.classList.remove('active', 'completed');
+                if (i < stageNum) {
+                    node.classList.add('completed');
+                } else if (i === stageNum) {
+                    node.classList.add('active');
+                }
+            }
+        }
+
+        // 3. Bottom Glassmorphic Card Text
+        const titleEl = document.getElementById('cardTitle');
+        const descEl = document.getElementById('cardDesc');
+        const stageBadgeEl = document.getElementById('cardStageKey');
+
+        if (titleEl && descEl && stageBadgeEl) {
+            gsap.to([titleEl, descEl], {
+                opacity: 0,
+                y: -4,
+                duration: 0.2,
+                onComplete: () => {
+                    titleEl.textContent = cfg.name;
+                    descEl.textContent = cfg.desc;
+                    stageBadgeEl.textContent = `ЭТАП ${stageNum} ИЗ 4: ${cfg.shortName.toUpperCase()}`;
+                    gsap.to([titleEl, descEl], { opacity: 1, y: 0, duration: 0.35 });
+                }
+            });
+        }
+
+        // 4. Camera view buttons active state
+        for (let i = 1; i <= 4; i++) {
+            const btn = document.getElementById('camBtn' + i);
+            if (btn) btn.classList.toggle('active', i === stageNum && !autoFollow);
+        }
+        const autoBtn = document.getElementById('camBtnAuto');
+        if (autoBtn) autoBtn.classList.toggle('active', autoFollow);
+    }
+
+    // 13. Manual Controls Exposed Globally
+    window.switchStageView = function(stageNum) {
+        autoFollow = false;
+        playStageChime(stageNum);
+        transitionToStage(stageNum);
+    };
+
+    window.focusActiveStage = function() {
+        autoFollow = true;
+        transitionToStage(currentStage);
+    };
+
+    window.setOverviewView = function() {
+        autoFollow = false;
+        gsap.to(camera.position, {
+            duration: 1.8,
+            x: OVERVIEW_CAMERA.camera.x,
+            y: OVERVIEW_CAMERA.camera.y,
+            z: OVERVIEW_CAMERA.camera.z,
+            ease: "power2.inOut"
+        });
+        gsap.to(lookTarget, {
+            duration: 1.8,
+            x: OVERVIEW_CAMERA.target.x,
+            y: OVERVIEW_CAMERA.target.y,
+            z: OVERVIEW_CAMERA.target.z,
+            ease: "power2.inOut"
+        });
+        document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('active'));
+        const ovBtn = document.getElementById('camBtnOverview');
+        if (ovBtn) ovBtn.classList.add('active');
+    };
+
+    // 14. Interactive Smooth Orbit & Zoom Controls (Mouse & Touch)
     function setupInteractiveOrbitControls(canvasEl) {
         let isPointerDown = false;
         let lastX = 0;
@@ -1521,7 +1618,7 @@
             applyCameraZoom(e.deltaY * 0.001);
         }, { passive: false });
 
-        // Touch support for mobile and tablets
+        // Touch support
         canvasEl.addEventListener('touchstart', (e) => {
             if (e.touches.length === 1) {
                 isPointerDown = true;
@@ -1601,40 +1698,7 @@
         if (autoBtn) autoBtn.classList.toggle('active', autoFollow);
     }
 
-    // 12. Manual Controls Exposed Globally
-    window.switchStageView = function(stageNum) {
-        autoFollow = false;
-        playStageChime(stageNum);
-        transitionToStage(stageNum);
-    };
-
-    window.focusActiveStage = function() {
-        autoFollow = true;
-        transitionToStage(currentStage);
-    };
-
-    window.setOverviewView = function() {
-        autoFollow = false;
-        gsap.to(camera.position, {
-            duration: 1.8,
-            x: OVERVIEW_CAMERA.camera.x,
-            y: OVERVIEW_CAMERA.camera.y,
-            z: OVERVIEW_CAMERA.camera.z,
-            ease: "power2.inOut"
-        });
-        gsap.to(lookTarget, {
-            duration: 1.8,
-            x: OVERVIEW_CAMERA.target.x,
-            y: OVERVIEW_CAMERA.target.y,
-            z: OVERVIEW_CAMERA.target.z,
-            ease: "power2.inOut"
-        });
-        document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('active'));
-        const ovBtn = document.getElementById('camBtnOverview');
-        if (ovBtn) ovBtn.classList.add('active');
-    };
-
-    // 13. Real-Time WebSockets & Socket.IO Integration
+    // 15. Real-Time WebSockets & Socket.IO Integration
     function setupRealtimeConnection() {
         const syncStatusEl = document.getElementById('cardSyncStatus');
 
@@ -1662,7 +1726,7 @@
             console.warn('[Tracking] Socket.IO initialization skipped:', e);
         }
 
-        // B. Native WebSockets Parallel Connection (100% resilient fallback)
+        // B. Native WebSockets Parallel Connection
         try {
             const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${wsProtocol}//${window.location.host}/ws/tracking/${orderNumber}`;
@@ -1681,7 +1745,6 @@
                 } catch (err) {}
             };
 
-            // Heartbeat
             setInterval(() => {
                 if (ws.readyState === WebSocket.OPEN) {
                     ws.send('ping');
@@ -1691,7 +1754,7 @@
             console.warn('[Tracking] Native WebSocket fallback error:', e);
         }
 
-        // C. Polling Fallback (ensures sync even on restricted networks)
+        // C. Polling Fallback
         setInterval(async () => {
             try {
                 const res = await fetch(`/api/delivery-stage?order=${encodeURIComponent(orderNumber)}`);
@@ -1716,10 +1779,9 @@
                 playStageChime(currentStage);
                 transitionToStage(currentStage);
 
-                // Subtle audio or visual flash
                 const widget = document.getElementById('modevaTrackingWidget');
                 if (widget) {
-                    gsap.fromTo(widget, { boxShadow: '0 0 50px rgba(212, 175, 55, 0.7)' }, { boxShadow: '0 30px 80px rgba(0,0,0,0.7)', duration: 1.5 });
+                    gsap.fromTo(widget, { boxShadow: '0 0 50px rgba(16, 185, 129, 0.7)' }, { boxShadow: '0 30px 80px rgba(0,0,0,0.75)', duration: 1.5 });
                 }
             }
         }
