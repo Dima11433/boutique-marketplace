@@ -9,6 +9,112 @@ let activeDiscount = parseInt(localStorage.getItem("modeva_discount") || localSt
 let favorites = JSON.parse(localStorage.getItem("modeva_favs") || localStorage.getItem("mirelle_favs") || "[]");
 let currentUser = JSON.parse(localStorage.getItem("modeva_user") || localStorage.getItem("mirelle_user") || "null");
 
+// Static Fallback Data for GitHub Pages & Offline
+const STATIC_DEFAULT_PRODUCTS = [
+    {
+        id: 1,
+        title: "Антрацитовый кожаный портфель Hermès Sac à Dépêches",
+        category: "Сумки",
+        original_price: 250000.0,
+        final_price: 250000.0,
+        discount_percent: 0,
+        image_url: "static/images/p1_briefcase.png",
+        description: "Изысканный мужской портфель из зернистой кожи Togo антрацитового цвета. Фурнитура из палладия, идеальное состояние.",
+        condition: "Идеальное"
+    },
+    {
+        id: 2,
+        title: "Антрацитовый чемодан Louis Vuitton Horizon 55",
+        category: "Сумки",
+        original_price: 150000.0,
+        final_price: 150000.0,
+        discount_percent: 0,
+        image_url: "static/images/p2_suitcase.png",
+        description: "Культовый чемодан на 4 колесах с монограммой Eclipse. Компактный ручной багаж премиум-класса с кодовым замком TSA.",
+        condition: "Новое с биркой"
+    },
+    {
+        id: 3,
+        title: "Бежевая кожаная сумка Chloé Marcie Small",
+        category: "Сумки",
+        original_price: 31200.0,
+        final_price: 31200.0,
+        discount_percent: 0,
+        image_url: "static/images/p3_beigebag.png",
+        description: "Элегантная сумка через плечо из мягкой телячьей кожи песочно-бежевого оттенка. Золотистая фурнитура, классический силуэт.",
+        condition: "Новое"
+    },
+    {
+        id: 4,
+        title: "Бежевая куртка SAINT LAURENT Teddy Jacket",
+        category: "Одежда",
+        original_price: 31400.0,
+        final_price: 31400.0,
+        discount_percent: 0,
+        image_url: "static/images/p4_jacket.png",
+        description: "Легендарная куртка бомбер в песочном цвете с контрастными кожаными вставками. 100% шерсть с шелковой подкладкой.",
+        condition: "Новое с биркой"
+    },
+    {
+        id: 5,
+        title: "Сумка Longchamp Le Pliage Heritage Cuir",
+        category: "Сумки",
+        original_price: 45000.0,
+        final_price: 45000.0,
+        discount_percent: 0,
+        image_url: "static/images/p5_longchamp.png",
+        description: "Трапециевидная сумка из натуральной кожи тонкой выделки. В комплекте съемный плечевой ремень и пыльник.",
+        condition: "Отличное"
+    },
+    {
+        id: 6,
+        title: "Кожаная сумка Chanel Classic Double Flap Mini",
+        category: "Сумки",
+        original_price: 380000.0,
+        final_price: 380000.0,
+        discount_percent: 0,
+        image_url: "static/images/p6_handbag.png",
+        description: "Черная стеганая кожа ягненка, фурнитура с 24-каратным золотым напылением. Аутентифицирована экспертами MODEVA.",
+        condition: "Идеальное"
+    },
+    {
+        id: 7,
+        title: "Сумка на плечо Prada Re-Edition 2005 Re-Nylon",
+        category: "Сумки",
+        original_price: 125000.0,
+        final_price: 125000.0,
+        discount_percent: 0,
+        image_url: "static/images/p7_shoulderbag.png",
+        description: "Культовая нейлоновая сумка со съемным чехлом на ремне и металлической цепочкой. Серебристая фурнитура.",
+        condition: "Новое"
+    },
+    {
+        id: 8,
+        title: "Солнцезащитные очки Jacques Marie Mage Dealan",
+        category: "Аксессуары",
+        original_price: 68000.0,
+        final_price: 68000.0,
+        discount_percent: 0,
+        image_url: "static/images/p8_sunglasses.png",
+        description: "Лимитированная серия ручной работы из ацетата премиум качества со вставками из драгоценных металлов.",
+        condition: "Новое в коробке"
+    }
+];
+
+const STATIC_PROMOS = {
+    "MODEVA": 15,
+    "VIP20": 20,
+    "LUXURY": 10,
+    "WELCOME": 10,
+    "SALE10": 10
+};
+
+function getSafeImageUrl(url) {
+    if (!url) return 'static/images/p1_briefcase.png';
+    if (url.startsWith('/static/')) return url.substring(1);
+    return url;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     // Check URL params for ref / promo
     const urlParams = new URLSearchParams(window.location.search);
@@ -39,19 +145,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function verifyAndSetPromo(code) {
     if (!code) return;
+    const cleanCode = code.trim().toUpperCase();
     try {
-        const res = await fetch(`/api/promo/check?code=${encodeURIComponent(code)}`);
-        const data = await res.json();
-        if (data.valid) {
-            activePromo = data.promo;
-            activeDiscount = data.discount_percent;
-            localStorage.setItem("mirelle_promo", activePromo);
-            localStorage.setItem("mirelle_discount", activeDiscount.toString());
-            updatePromoUI();
-            loadProducts();
+        const res = await fetch(`/api/promo/check?code=${encodeURIComponent(cleanCode)}`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.valid) {
+                activePromo = data.promo;
+                activeDiscount = data.discount_percent;
+                localStorage.setItem("modeva_promo", activePromo);
+                localStorage.setItem("modeva_discount", activeDiscount.toString());
+                updatePromoUI();
+                loadProducts();
+                return;
+            }
         }
     } catch (e) {
-        console.error("Promo verification failed", e);
+        // Fallback for static GitHub Pages
+    }
+
+    if (STATIC_PROMOS[cleanCode]) {
+        activePromo = cleanCode;
+        activeDiscount = STATIC_PROMOS[cleanCode];
+        localStorage.setItem("modeva_promo", activePromo);
+        localStorage.setItem("modeva_discount", activeDiscount.toString());
+        updatePromoUI();
+        loadProducts();
     }
 }
 
@@ -72,6 +191,8 @@ function updatePromoUI() {
 function clearPromo() {
     activePromo = "";
     activeDiscount = 0;
+    localStorage.removeItem("modeva_promo");
+    localStorage.removeItem("modeva_discount");
     localStorage.removeItem("mirelle_promo");
     localStorage.removeItem("mirelle_discount");
     updatePromoUI();
@@ -110,22 +231,48 @@ async function loadProducts() {
         url += `&promo=${encodeURIComponent(activePromo)}`;
     }
 
+    let loaded = false;
     try {
         const res = await fetch(url);
-        const data = await res.json();
-        allProducts = data.products || [];
-
-        // Apply client sorting
-        if (currentSort === "price_asc") {
-            allProducts.sort((a, b) => a.final_price - b.final_price);
-        } else if (currentSort === "price_desc") {
-            allProducts.sort((a, b) => b.final_price - a.final_price);
+        if (res.ok) {
+            const data = await res.json();
+            allProducts = data.products || [];
+            loaded = true;
         }
-
-        renderProducts(allProducts);
     } catch (e) {
-        grid.innerHTML = '<div class="loading-spinner">Ошибка загрузки товаров. Попробуйте позже.</div>';
+        // Fallback to static catalog
     }
+
+    if (!loaded) {
+        // Fallback for GitHub Pages or offline
+        let filtered = STATIC_DEFAULT_PRODUCTS.slice();
+        if (currentCategory && currentCategory !== "Все") {
+            filtered = filtered.filter(p => p.category === currentCategory);
+        }
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            filtered = filtered.filter(p => p.title.toLowerCase().includes(q) || (p.description && p.description.toLowerCase().includes(q)));
+        }
+        allProducts = filtered.map(p => {
+            const orig = p.original_price;
+            const disc = activeDiscount || 0;
+            const finalP = disc > 0 ? Math.round(orig * (1 - disc / 100)) : orig;
+            return {
+                ...p,
+                discount_percent: disc,
+                final_price: finalP
+            };
+        });
+    }
+
+    // Apply client sorting
+    if (currentSort === "price_asc") {
+        allProducts.sort((a, b) => a.final_price - b.final_price);
+    } else if (currentSort === "price_desc") {
+        allProducts.sort((a, b) => b.final_price - a.final_price);
+    }
+
+    renderProducts(allProducts);
 }
 
 function renderProducts(products) {
@@ -147,7 +294,7 @@ function renderProducts(products) {
             <div class="product-card" onclick="openProductModal(${p.id})">
                 <div class="product-card-glare"></div>
                 <div class="product-img-box">
-                    <img src="${p.image_url}" alt="${escapeHtml(p.title)}" loading="lazy">
+                    <img src="${getSafeImageUrl(p.image_url)}" alt="${escapeHtml(p.title)}" loading="lazy">
                 </div>
                 <div class="product-info">
                     <h3 class="product-title" title="${escapeHtml(p.title)}">${escapeHtml(p.title)}</h3>
@@ -189,7 +336,7 @@ async function openProductModal(productId) {
 
     content.innerHTML = `
         <div style="flex: 1; min-width: 260px; max-height: 380px; border-radius: 18px; overflow: hidden; background: #f4f4f6;">
-            <img src="${product.image_url}" style="width: 100%; height: 100%; object-fit: cover;">
+            <img src="${getSafeImageUrl(product.image_url)}" style="width: 100%; height: 100%; object-fit: cover;">
         </div>
         <div style="flex: 1.2; display: flex; flex-direction: column; justify-content: space-between;">
             <div>
@@ -236,7 +383,7 @@ function startCheckout(productId) {
 
     const summaryBox = document.getElementById("orderSummaryBox");
     summaryBox.innerHTML = `
-        <img src="${product.image_url}" class="order-summary-img">
+        <img src="${getSafeImageUrl(product.image_url)}" class="order-summary-img">
         <div class="order-summary-info">
             <h4>${escapeHtml(product.title)}</h4>
             <span>Категория: ${escapeHtml(product.category)}</span>
@@ -282,7 +429,7 @@ function recalcOrderPricing() {
 }
 
 async function applyPromoFromInput() {
-    const promoVal = document.getElementById("orderPromoInput").value.trim();
+    const promoVal = document.getElementById("orderPromoInput").value.trim().toUpperCase();
     const feedback = document.getElementById("promoFeedbackMsg");
 
     if (!promoVal) {
@@ -293,23 +440,36 @@ async function applyPromoFromInput() {
 
     try {
         const res = await fetch(`/api/promo/check?code=${encodeURIComponent(promoVal)}`);
-        const data = await res.json();
-        if (data.valid) {
-            activePromo = data.promo;
-            activeDiscount = data.discount_percent;
-            localStorage.setItem("mirelle_promo", activePromo);
-            localStorage.setItem("mirelle_discount", activeDiscount.toString());
-            feedback.className = "promo-feedback success";
-            feedback.textContent = `✅ Промокод применен! Скидка ${activeDiscount}%`;
-            updatePromoUI();
-            recalcOrderPricing();
-        } else {
-            feedback.className = "promo-feedback error";
-            feedback.textContent = "❌ Неверный промокод";
+        if (res.ok) {
+            const data = await res.json();
+            if (data.valid) {
+                activePromo = data.promo;
+                activeDiscount = data.discount_percent;
+                localStorage.setItem("modeva_promo", activePromo);
+                localStorage.setItem("modeva_discount", activeDiscount.toString());
+                feedback.className = "promo-feedback success";
+                feedback.textContent = `✅ Промокод применен! Скидка ${activeDiscount}%`;
+                updatePromoUI();
+                recalcOrderPricing();
+                return;
+            }
         }
     } catch (e) {
+        // Fallback for static GitHub Pages
+    }
+
+    if (STATIC_PROMOS[promoVal]) {
+        activePromo = promoVal;
+        activeDiscount = STATIC_PROMOS[promoVal];
+        localStorage.setItem("modeva_promo", activePromo);
+        localStorage.setItem("modeva_discount", activeDiscount.toString());
+        feedback.className = "promo-feedback success";
+        feedback.textContent = `✅ Промокод применен! Скидка ${activeDiscount}%`;
+        updatePromoUI();
+        recalcOrderPricing();
+    } else {
         feedback.className = "promo-feedback error";
-        feedback.textContent = "Ошибка проверки промокода";
+        feedback.textContent = "❌ Неверный промокод";
     }
 }
 
@@ -329,6 +489,9 @@ async function submitOrder(e) {
     btn.disabled = true;
     btn.textContent = "Обработка заказа...";
 
+    let orderSuccess = false;
+    let orderNum = "BM-" + Math.floor(100000 + Math.random() * 900000);
+
     try {
         const res = await fetch("/api/orders", {
             method: "POST",
@@ -342,24 +505,48 @@ async function submitOrder(e) {
             })
         });
 
-        const data = await res.json();
-        if (data.status === "ok") {
-            closeModal("checkoutModal");
-            const orderNum = data.order ? data.order.order_number : "";
-            const trackBtn = document.getElementById("successTrackBtn");
-            if (trackBtn && orderNum) {
-                trackBtn.href = `/tracking?order=${encodeURIComponent(orderNum)}`;
+        if (res.ok) {
+            const data = await res.json();
+            if (data.status === "ok") {
+                orderSuccess = true;
+                if (data.order && data.order.order_number) {
+                    orderNum = data.order.order_number;
+                }
             }
-            openModal("successModal");
-            document.getElementById("orderForm").reset();
-        } else {
-            alert(data.detail || "Произошла ошибка при создании заказа");
         }
     } catch (err) {
-        alert("Ошибка связи с сервером");
-    } finally {
-        btn.disabled = false;
-        btn.textContent = origBtnText;
+        // Fallback for static GitHub Pages
+        console.warn("Backend unavailable, processing order via local store:", err);
+    }
+
+    // Save order locally for demo/static tracking
+    try {
+        const localOrders = JSON.parse(localStorage.getItem("modeva_orders") || "[]");
+        localOrders.unshift({
+            order_number: orderNum,
+            product_title: activeProduct.title,
+            final_price: activeProduct.final_price,
+            client_name: name,
+            client_phone: phone,
+            client_address: address,
+            promo_code: promo,
+            created_at: new Date().toISOString()
+        });
+        localStorage.setItem("modeva_orders", JSON.stringify(localOrders));
+        orderSuccess = true;
+    } catch (e) {}
+
+    btn.disabled = false;
+    btn.textContent = origBtnText;
+
+    if (orderSuccess) {
+        closeModal("checkoutModal");
+        const trackBtn = document.getElementById("successTrackBtn");
+        if (trackBtn) {
+            trackBtn.href = `tracking.html?order=${encodeURIComponent(orderNum)}`;
+        }
+        openModal("successModal");
+        document.getElementById("orderForm")?.reset();
     }
 }
 

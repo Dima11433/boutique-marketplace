@@ -1082,6 +1082,14 @@
         }
 
         async function setDeliveryStageAdmin(stageNum) {
+            highlightStageUI(stageNum);
+            try {
+                localStorage.setItem('modeva_delivery_stage', stageNum.toString());
+                if (window.BroadcastChannel) {
+                    const bc = new BroadcastChannel('modeva_delivery_channel');
+                    bc.postMessage({ current_stage: stageNum });
+                }
+            } catch(e) {}
             try {
                 const res = await fetch('/api/admin/delivery-stage', {
                     method: 'POST',
@@ -1089,7 +1097,6 @@
                     body: JSON.stringify({ stage: stageNum, order_number: 'GLOBAL' })
                 });
                 if (res.ok) {
-                    highlightStageUI(stageNum);
                     refreshAdminData();
                 }
             } catch(e) {}

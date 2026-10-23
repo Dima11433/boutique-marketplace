@@ -1766,6 +1766,34 @@
                 }
             } catch (e) {}
         }, 8000);
+
+        // D. BroadcastChannel & LocalStorage fallback for GitHub Pages
+        try {
+            if (window.BroadcastChannel) {
+                const bc = new BroadcastChannel('modeva_delivery_channel');
+                bc.onmessage = (event) => {
+                    if (event.data && event.data.current_stage) {
+                        handleIncomingStageUpdate(event.data);
+                    }
+                };
+            }
+        } catch (e) {}
+
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'modeva_delivery_stage' && e.newValue) {
+                const s = parseInt(e.newValue);
+                if (s >= 1 && s <= 4) {
+                    handleIncomingStageUpdate({ current_stage: s });
+                }
+            }
+        });
+
+        const localSavedStage = parseInt(localStorage.getItem('modeva_delivery_stage') || '0');
+        if (localSavedStage >= 1 && localSavedStage <= 4 && localSavedStage !== currentStage) {
+            setTimeout(() => {
+                handleIncomingStageUpdate({ current_stage: localSavedStage });
+            }, 600);
+        }
     }
 
     function handleIncomingStageUpdate(data) {
