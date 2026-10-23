@@ -954,6 +954,26 @@ async def create_order(
             return order_dict
 
 
+async def get_client_orders(phone: Optional[str] = None, client_id: Optional[int] = None) -> list:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        query = "SELECT * FROM orders WHERE 1=1"
+        params = []
+        if phone:
+            query += " AND (client_phone = ? OR client_phone LIKE ?)"
+            clean_phone = phone.strip()
+            params.extend([clean_phone, f"%{clean_phone[-10:]}%"])
+        elif client_id:
+            query += " AND client_id = ?"
+            params.append(client_id)
+        else:
+            return []
+        query += " ORDER BY id DESC"
+        async with db.execute(query, params) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(r) for r in rows]
+
+
 # --- Custom Products, Broadcasts & Catalog ---
 
 async def add_worker_product(worker_id: int, title: str, category: str, price: float, image_url: str, description: str):

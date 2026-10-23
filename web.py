@@ -360,6 +360,12 @@ async def api_create_order(data: OrderRequest):
     return {"status": "ok", "order": order}
 
 
+@app.get("/api/client/orders")
+async def api_get_client_orders(phone: Optional[str] = None, client_id: Optional[int] = None):
+    orders = await db.get_client_orders(phone=phone, client_id=client_id)
+    return {"status": "ok", "orders": orders}
+
+
 @app.post("/api/action-log")
 async def api_action_log(data: ActionLogRequest):
     return {"status": "ok"}

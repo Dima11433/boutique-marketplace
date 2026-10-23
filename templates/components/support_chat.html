@@ -683,19 +683,23 @@
 
         inp.value = "";
 
-        // Client info
-        const userObj = JSON.parse(localStorage.getItem("mirelle_user") || "null");
-        const clientName = userObj ? userObj.name : (localStorage.getItem("last_buyer_name") || "Покупатель");
-        const clientPhone = userObj ? (userObj.phone || "") : (localStorage.getItem("last_buyer_phone") || "");
+        // Client info from modeva_user or saved profile
+        const userObj = JSON.parse(localStorage.getItem("modeva_user") || localStorage.getItem("mirelle_user") || "null");
+        const savedProfile = JSON.parse(localStorage.getItem("modeva_user_profile") || "{}");
+        const clientName = userObj ? userObj.name : (savedProfile.name || localStorage.getItem("last_buyer_name") || "Покупатель");
+        const clientPhone = userObj ? (userObj.phone || "") : (savedProfile.phone || localStorage.getItem("last_buyer_phone") || "");
 
-        // Append to UI immediately
-        appendMessageUI({
+        const clientMsgObj = {
             id: "tmp_" + Date.now(),
             sender: "client",
             message: msg,
             client_name: clientName,
             created_at: new Date().toISOString()
-        });
+        };
+
+        // Append to UI immediately & persist
+        appendMessageUI(clientMsgObj);
+        saveLocalSupportMessage(clientMsgObj);
 
         // Show typing indicator
         showTyping(true);
@@ -719,22 +723,43 @@
         } catch (err) {
             console.warn("Support offline fallback mode active:", err);
             setTimeout(() => {
-                const replies = [
-                    "Здравствуйте! Благодарим за интерес к коллекции MODEVA. Наш консьерж уточняет детали по вашему запросу.",
-                    "Ваше обращение принято. Персональный менеджер свяжется с вами в течение пары минут для подтверждения.",
-                    "Все изделия из нашего каталога проходят 100% аутентификацию и доставляются курьером в белых перчатках."
-                ];
-                const randomReply = replies[Math.floor(Math.random() * replies.length)];
+                let replyText = "";
+                const lowerMsg = msg.toLowerCase();
+
+                if (lowerMsg.includes("где мой заказ") || lowerMsg.includes("заказ")) {
+                    const localOrders = JSON.parse(localStorage.getItem("modeva_orders") || "[]");
+                    if (localOrders.length > 0) {
+                        const o = localOrders[0];
+                        replyText = `По вашему аккаунту найден заказ #${o.order_number} («${o.product_title}»). Статус: В обработке / курьерская служба. Наш представитель свяжется с вами по номеру ${o.client_phone || clientPhone || 'в профиле'} для согласования доставки.`;
+                    } else {
+                        replyText = "В вашем профиле пока нет активных заказов. Как только вы оформите покупку через корзину, здесь появится подробная информация и статус отслеживания.";
+                    }
+                } else if (lowerMsg.includes("скидк") || lowerMsg.includes("промокод") || lowerMsg.includes("акци")) {
+                    replyText = "Для вас действуют эксклюзивные промокоды бутика MODEVA: «MODEVA» (скидка 15%) и «VIP20» (скидка 20% для резидентов клуба). Вы можете применить их в корзине или в личном кабинете.";
+                } else if (lowerMsg.includes("подлинн") || lowerMsg.includes("оригинал") || lowerMsg.includes("гаранти")) {
+                    replyText = "Каждое изделие из коллекции MODEVA проходит многоступенчатую экспертизу подлинности с выдачей защищенного цифрового сертификата MODEVA Authenticity.";
+                } else if (lowerMsg.includes("менеджер") || lowerMsg.includes("человек") || lowerMsg.includes("оператор")) {
+                    replyText = "Старший специалист консьерж-сервиса подключился к диалогу. Мы готовы ответить на любые вопросы и организовать персональный показ лотов.";
+                } else {
+                    const replies = [
+                        `Здравствуйте, ${clientName !== "Покупатель" ? clientName : ""}! Благодарим за обращение в MODEVA. Наш консьерж принял запрос и уже уточняет необходимые данные.`,
+                        "Ваше обращение зафиксировано службой заботы MODEVA. Персональный менеджер на связи и ответит на любые вопросы.",
+                        "Все изделия из нашего бутика доставляются в фирменной упаковке персональным курьером в удобное для вас время."
+                    ];
+                    replyText = replies[Math.floor(Math.random() * replies.length)];
+                }
+
                 const replyMsg = {
                     id: "bot_" + Date.now(),
                     sender: "support",
-                    message: randomReply,
+                    message: replyText,
                     created_at: new Date().toISOString()
                 };
                 knownMessageIds.add(replyMsg.id);
                 appendMessageUI(replyMsg);
+                saveLocalSupportMessage(replyMsg);
                 if (supportSoundEnabled) playSupportChime();
-            }, 1200);
+            }, 800);
         } finally {
             setTimeout(() => showTyping(false), 800);
         }
@@ -840,8 +865,34 @@
             .replace(/'/g, "&#039;");
     }
 
+    function saveLocalSupportMessage(msg) {
+        try {
+            const hist = JSON.parse(localStorage.getItem("modeva_support_history") || "[]");
+            // Prevent duplicate saves
+            if (!hist.some(m => m.id === msg.id)) {
+                hist.push(msg);
+                if (hist.length > 50) hist.shift();
+                localStorage.setItem("modeva_support_history", JSON.stringify(hist));
+            }
+        } catch (e) {}
+    }
+
+    function loadLocalSupportHistory() {
+        try {
+            const hist = JSON.parse(localStorage.getItem("modeva_support_history") || "[]");
+            hist.forEach(msg => {
+                if (!knownMessageIds.has(msg.id)) {
+                    knownMessageIds.add(msg.id);
+                    appendMessageUI(msg);
+                }
+            });
+        } catch (e) {}
+    }
+
     // Real-time Socket.IO listener if present on page
     document.addEventListener("DOMContentLoaded", () => {
+        loadLocalSupportHistory();
+
         if (typeof io !== "undefined") {
             try {
                 const s = io();
@@ -850,6 +901,7 @@
                         if (!knownMessageIds.has(data.id)) {
                             knownMessageIds.add(data.id);
                             appendMessageUI(data);
+                            saveLocalSupportMessage(data);
                             if (data.sender === "support") {
                                 if (supportSoundEnabled) playSupportChime();
                                 if (!isSupportOpen) {
@@ -863,7 +915,7 @@
             } catch (e) {}
         }
 
-        // Preload any existing messages
+        // Preload any existing messages from backend
         loadSupportMessages();
     });
 })();

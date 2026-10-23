@@ -307,11 +307,15 @@ function startCheckout(productId) {
         </div>
     `;
 
-    // Fill client info if logged in
-    if (currentUser) {
-        document.getElementById("orderClientName").value = currentUser.name || "";
-        document.getElementById("orderClientPhone").value = currentUser.phone || "";
-    }
+    // Fill client info if logged in or saved in profile
+    const savedProf = JSON.parse(localStorage.getItem("modeva_user_profile") || "{}");
+    const nameInput = document.getElementById("orderClientName");
+    const phoneInput = document.getElementById("orderClientPhone");
+    const addrInput = document.getElementById("orderClientAddress");
+
+    if (nameInput) nameInput.value = (currentUser && currentUser.name) || savedProf.name || localStorage.getItem("last_buyer_name") || "";
+    if (phoneInput) phoneInput.value = (currentUser && currentUser.phone) || savedProf.phone || localStorage.getItem("last_buyer_phone") || "";
+    if (addrInput && !addrInput.value) addrInput.value = savedProf.address || "";
 
     // Set promo input
     const promoInput = document.getElementById("orderPromoInput");
@@ -561,6 +565,7 @@ function logoutUser() {
     localStorage.removeItem("modeva_user");
     localStorage.removeItem("mirelle_user");
     updateUserUI();
+    closeModal("profileModal");
 }
 
 function updateUserUI() {
@@ -572,10 +577,181 @@ function updateUserUI() {
         if (authButtons) authButtons.style.display = "none";
         if (userProfile) userProfile.style.display = "flex";
         if (greeting) greeting.textContent = currentUser.name || "Клиент";
+        const initial = (currentUser.name || 'К').charAt(0).toUpperCase();
+        const avatarHeader = document.getElementById("userAvatarBadge");
+        if (avatarHeader) avatarHeader.textContent = initial;
     } else {
         if (authButtons) authButtons.style.display = "flex";
         if (userProfile) userProfile.style.display = "none";
     }
+}
+
+// --- ✦ Luxury Client Suite (Личный кабинет) Functions ✦ ---
+
+function openProfileModal() {
+    if (!currentUser) {
+        openAuthModal('login');
+        return;
+    }
+    updateProfileModalData();
+    openModal("profileModal");
+}
+
+function updateProfileModalData() {
+    if (!currentUser) return;
+
+    const initial = (currentUser.name || 'К').charAt(0).toUpperCase();
+    const avatarHeader = document.getElementById("userAvatarBadge");
+    if (avatarHeader) avatarHeader.textContent = initial;
+
+    const avatarLarge = document.getElementById("profileAvatarLarge");
+    if (avatarLarge) avatarLarge.textContent = initial;
+
+    const nameEl = document.getElementById("profileUserName");
+    if (nameEl) nameEl.textContent = currentUser.name || "Клиент";
+
+    const contactEl = document.getElementById("profileUserContact");
+    if (contactEl) contactEl.textContent = currentUser.phone || currentUser.email || "+7 (999) 000-00-00";
+
+    const cardName = document.getElementById("profileCardName");
+    if (cardName) cardName.textContent = currentUser.name || "Клиент";
+
+    const cardDisc = document.getElementById("profileCardDiscount");
+    if (cardDisc) cardDisc.textContent = `${activeDiscount || 15}%`;
+
+    const levelEl = document.getElementById("profileUserLevel");
+    if (levelEl) levelEl.textContent = `Персональная скидка ${activeDiscount || 15}%`;
+
+    // Fill address form from saved profile
+    const saved = JSON.parse(localStorage.getItem("modeva_user_profile") || "{}");
+    const prefName = document.getElementById("prefClientName");
+    if (prefName) prefName.value = saved.name || currentUser.name || "";
+
+    const prefPhone = document.getElementById("prefClientPhone");
+    if (prefPhone) prefPhone.value = saved.phone || currentUser.phone || "";
+
+    const prefAddr = document.getElementById("prefClientAddress");
+    if (prefAddr) prefAddr.value = saved.address || "";
+
+    const prefNotes = document.getElementById("prefClientNotes");
+    if (prefNotes) prefNotes.value = saved.notes || "";
+
+    renderProfileOrders();
+}
+
+function switchProfileTab(tabId) {
+    document.querySelectorAll(".profile-tab-btn").forEach(btn => btn.classList.remove("active"));
+    document.querySelectorAll(".profile-tab-panel").forEach(p => p.classList.remove("active"));
+
+    const btn = document.querySelector(`.profile-tab-btn[onclick*="${tabId}"]`);
+    if (btn) btn.classList.add("active");
+
+    const panel = document.getElementById(tabId);
+    if (panel) panel.classList.add("active");
+}
+
+async function renderProfileOrders() {
+    const listEl = document.getElementById("profileOrdersList");
+    const countEl = document.getElementById("profileOrdersCount");
+    if (!listEl) return;
+
+    let orders = JSON.parse(localStorage.getItem("modeva_orders") || "[]");
+
+    // Attempt online sync if backend has client orders
+    if (currentUser && currentUser.phone) {
+        try {
+            const res = await fetch(`/api/client/orders?phone=${encodeURIComponent(currentUser.phone)}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.status === "ok" && Array.isArray(data.orders) && data.orders.length > 0) {
+                    orders = data.orders;
+                }
+            }
+        } catch(e) {}
+    }
+
+    if (countEl) countEl.textContent = orders.length;
+
+    if (!orders.length) {
+        listEl.innerHTML = `
+            <div class="profile-empty-orders">
+                <div class="profile-empty-icon">🛍</div>
+                <h4 class="profile-empty-title">Заказов пока нет</h4>
+                <p class="profile-empty-desc">Вы ещё не совершали покупок в бутике. Выберите понравившиеся изделия в каталоге и воспользуйтесь персональной скидкой резидента.</p>
+                <button type="button" class="btn btn-dark" style="background: linear-gradient(135deg, #18191f, #0d0e12); color: #fff; padding: 10px 22px; border-radius: 10px;" onclick="closeModal('profileModal')">Перейти к покупкам</button>
+            </div>
+        `;
+        return;
+    }
+
+    listEl.innerHTML = orders.map(o => {
+        const orderNum = o.order_number || "ORD-" + Math.floor(100000 + Math.random() * 900000);
+        const title = o.product_title || "Изделие из коллекции MODEVA";
+        const price = formatMoney(o.final_price || 0);
+        const dateStr = o.created_at ? new Date(o.created_at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Сегодня";
+        const status = o.status || "Оплачен";
+        
+        let statusClass = "order-status-paid";
+        if (status === "В обработке") statusClass = "order-status-process";
+        else if (status === "В пути" || status === "Отправлен") statusClass = "order-status-transit";
+        else if (status === "Доставлен") statusClass = "order-status-delivered";
+
+        return `
+            <div class="profile-order-card">
+                <div class="order-card-header">
+                    <div>
+                        <span class="order-num-tag">#${escapeHtml(orderNum)}</span>
+                        <span class="order-date-text">${dateStr}</span>
+                    </div>
+                    <span class="order-status-badge ${statusClass}">${escapeHtml(status)}</span>
+                </div>
+                <div class="order-card-body">
+                    <div class="order-product-title">${escapeHtml(title)}</div>
+                    <div class="order-price-val">${price}</div>
+                </div>
+                <div class="order-card-actions">
+                    <button type="button" class="btn-order-action" onclick="closeModal('profileModal'); openModevaSupport('Здравствуйте! Вопрос по моему заказу #${escapeHtml(orderNum)} («${escapeHtml(title)}»).');">
+                        💬 Вопрос по заказу
+                    </button>
+                    <a href="tracking.html?order=${encodeURIComponent(orderNum)}" class="btn-order-action btn-order-action-gold">
+                        🚚 Отследить
+                    </a>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+function saveClientAddress(e) {
+    e.preventDefault();
+    const name = document.getElementById("prefClientName").value.trim();
+    const phone = document.getElementById("prefClientPhone").value.trim();
+    const address = document.getElementById("prefClientAddress").value.trim();
+    const notes = document.getElementById("prefClientNotes").value.trim();
+
+    const profileData = { name, phone, address, notes };
+    localStorage.setItem("modeva_user_profile", JSON.stringify(profileData));
+    
+    // Also update currentUser name/phone if present
+    if (currentUser) {
+        currentUser.name = name;
+        currentUser.phone = phone;
+        localStorage.setItem("modeva_user", JSON.stringify(currentUser));
+        localStorage.setItem("mirelle_user", JSON.stringify(currentUser));
+        updateUserUI();
+    }
+
+    const toast = document.getElementById("addressSavedToast");
+    if (toast) {
+        toast.style.display = "inline";
+        setTimeout(() => { toast.style.display = "none"; }, 3000);
+    }
+}
+
+async function applyPromoDirectly(code) {
+    await verifyAndSetPromo(code);
+    updateProfileModalData();
+    alert(`Промокод ${code} активирован! Ваша персональная скидка ${activeDiscount}% применена на весь каталог.`);
 }
 
 // --- Categories & Filtering ---
