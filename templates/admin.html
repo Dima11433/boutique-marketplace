@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель Управления — MODEVA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="icon" type="image/png" href="/static/images/p1_briefcase.png">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        :root {
+            --admin-bg: #090a0f;
+            --admin-card: rgba(18, 21, 32, 0.85);
+            --admin-border: rgba(212, 175, 55, 0.25);
+            --admin-gold: #d4af37;
+            --admin-gold-glow: rgba(212, 175, 55, 0.35);
+            --admin-green: #10b981;
+        }
+
+        body.admin-body {
+            background-color: var(--admin-bg);
+            color: #ffffff;
+            font-family: 'Inter', -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Header */
+        .admin-header {
+            background: rgba(12, 14, 21, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--admin-border);
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .admin-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .admin-logo {
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            color: var(--admin-gold);
+            text-decoration: none;
+        }
+
+        .admin-badge {
+            background: rgba(212, 175, 55, 0.15);
+            border: 1px solid var(--admin-gold);
+            color: var(--admin-gold);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 100px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .admin-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .admin-link-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #e2e8f0;
+            padding: 7px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .admin-link-btn:hover {
+            background: rgba(212, 175, 55, 0.15);
+            border-color: var(--admin-gold);
+            color: #ffffff;
+        }
+
+        /* Layout Container */
+        .admin-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 32px 24px 60px 24px;
+            flex: 1;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Stats Row */
+        .admin-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--admin-card);
+            border: 1px solid var(--admin-border);
+            border-radius: 18px;
+            padding: 20px 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--admin-gold), #10b981);
+            opacity: 0.8;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.55);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 6px;
+        }
+
+        .stat-val {
+            font-size: 28px;
+            font-weight: 700;
+            color: #ffffff;
+            font-family: 'Cormorant Garamond', Georgia, serif;
+        }
+
+        .stat-sub {
+            font-size: 12px;
+            color: var(--admin-gold);
+            margin-top: 4px;
+        }
+
+        /* Tabs Navigation */
+        .admin-tabs {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 16px;
+            margin-bottom: 32px;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            color: rgba(255, 255, 255, 0.65);
+            font-size: 14px;
+            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .tab-btn.active {
+            background: rgba(212, 175, 55, 0.16);
+            border-color: var(--admin-gold);
+            color: #fef08a;
+        }
+
+        /* Tab Content Section */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeInTab 0.3s ease-out;
+        }
+
+        @keyframes fadeInTab {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Card panels */
+        .panel-card {
+            background: var(--admin-card);
+            border: 1px solid var(--admin-border);
+            border-radius: 20px;
+            padding: 28px;
+            margin-bottom: 32px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .panel-title {
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-size: 24px;
+            font-weight: 600;
+            color: #ffffff;
+            margin: 0 0 8px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel-subtitle {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.55);
+            margin: 0 0 24px 0;
+            line-height: 1.5;
+        }
+
+        /* 3D Delivery Control Stage Grid */
+        .stage-control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .stage-card {
+            background: rgba(14, 16, 25, 0.75);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 18px;
+            padding: 24px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .stage-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(212, 175, 55, 0.5);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .stage-card.active {
+            background: rgba(16, 185, 129, 0.12);
+            border-color: #10b981;
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.35);
+        }
+
+        .stage-num-badge {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: #1f2438;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 15px;
+            margin-bottom: 14px;
+            transition: all 0.3s;
+        }
+
+        .stage-card.active .stage-num-badge {
+            background: #10b981;
+            box-shadow: 0 0 14px #10b981;
+        }
+
+        .stage-card-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0 0 6px 0;
+        }
+
+        .stage-card-sub {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        .stage-live-tag {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #34d399;
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid #10b981;
+            padding: 4px 10px;
+            border-radius: 100px;
+            display: none;
+        }
+
+        .stage-card.active .stage-live-tag {
+            display: block;
+        }
+
+        /* Split Support Chat */
+        .support-split {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 20px;
+            height: 600px;
+            background: rgba(11, 13, 20, 0.7);
+            border: 1px solid var(--admin-border);
+            border-radius: 18px;
+            overflow: hidden;
+        }
+
+        @media (max-width: 900px) {
+            .support-split { grid-template-columns: 1fr; height: auto; }
+        }
+
+        .support-sidebar {
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-y: auto;
+            background: rgba(14, 16, 24, 0.6);
+        }
+
+        .session-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .session-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .session-item.active {
+            background: rgba(212, 175, 55, 0.12);
+            border-left: 3px solid var(--admin-gold);
+        }
+
+        .session-item-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .session-client-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .session-time {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .session-preview {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.65);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .support-chat-pane {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .chat-pane-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(16, 18, 27, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chat-pane-messages {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .chat-bubble {
+            max-width: 70%;
+            padding: 12px 18px;
+            border-radius: 16px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .chat-bubble.client {
+            align-self: flex-start;
+            background: #1e2230;
+            color: #ffffff;
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-bubble.support {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #ffffff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-pane-input-bar {
+            padding: 16px 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(14, 16, 24, 0.9);
+            display: flex;
+            gap: 12px;
+        }
+
+        .chat-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: #ffffff;
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+            resize: none;
+        }
+
+        .chat-input:focus {
+            border-color: var(--admin-gold);
+        }
+
+        .chat-send-btn {
+            background: var(--admin-gold);
+            color: #0b0c10;
+            border: none;
+            border-radius: 12px;
+            padding: 0 24px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .chat-send-btn:hover {
+            background: #fef08a;
+            transform: scale(1.02);
+        }
+
+        /* Tables & Lists */
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .admin-table th {
+            text-align: left;
+            padding: 14px 18px;
+            background: rgba(255, 255, 255, 0.04);
+            color: rgba(255, 255, 255, 0.6);
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .admin-table td {
+            padding: 14px 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.85);
+            vertical-align: middle;
+        }
+
+        .admin-table tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .table-thumb {
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Action Buttons */
+        .btn-action-del {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            color: #f87171;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-action-del:hover {
+            background: rgba(239, 68, 68, 0.3);
+            color: #ffffff;
+        }
+
+        .btn-gold-save {
+            background: linear-gradient(135deg, var(--admin-gold), #aa820a);
+            border: none;
+            color: #0b0c10;
+            font-weight: 700;
+            padding: 10px 24px;
+            border-radius: 12px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-gold-save:hover {
+            box-shadow: 0 4px 16px var(--admin-gold-glow);
+            transform: translateY(-1px);
+        }
+
+        /* Lock Screen Modal */
+        .admin-lock-overlay {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at center, #151825 0%, #08090d 100%);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .lock-box {
+            background: var(--admin-card);
+            border: 1px solid var(--admin-border);
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
+            text-align: center;
+        }
+
+        .lock-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .lock-title {
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-size: 30px;
+            font-weight: 600;
+            color: #ffffff;
+            margin: 0 0 8px 0;
+        }
+
+        .lock-sub {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+            margin: 0 0 24px 0;
+        }
+
+        .lock-input {
+            width: 100%;
+            box-sizing: border-box;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 14px 18px;
+            color: #ffffff;
+            font-size: 15px;
+            outline: none;
+            text-align: center;
+            letter-spacing: 0.1em;
+            margin-bottom: 20px;
+        }
+
+        .lock-input:focus {
+            border-color: var(--admin-gold);
+            box-shadow: 0 0 14px var(--admin-gold-glow);
+        }
+
+        /* Forms in Panels */
+        .admin-form-group {
+            margin-bottom: 18px;
+        }
+
+        .admin-form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .admin-form-input {
+            width: 100%;
+            box-sizing: border-box;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: #ffffff;
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+        }
+
+        .admin-form-input:focus {
+            border-color: var(--admin-gold);
+        }
+    </style>
+</head>
+<body class="admin-body">
+
+    <!-- Admin Authentication Gate -->
+    <div class="admin-lock-overlay" id="adminLockScreen">
+        <div class="lock-box">
+            <div class="lock-icon">👑</div>
+            <h2 class="lock-title">MODEVA Control</h2>
+            <p class="lock-sub">Панель управления маркетплейсом</p>
+            <form onsubmit="handleAdminLogin(event)">
+                <input type="password" id="adminPassInput" class="lock-input" placeholder="Пароль администратора" required autofocus>
+                <button type="submit" class="btn-gold-save" style="width: 100%; padding: 14px;">Войти в панель</button>
+            </form>
+            <div id="lockError" style="color: #f87171; font-size: 12px; margin-top: 14px; display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Admin Top Header -->
+    <header class="admin-header">
+        <div class="admin-brand">
+            <a href="/" class="admin-logo">MODEVA</a>
+            <span class="admin-badge">Панель Управления</span>
+            <span style="font-size: 12px; color: #10b981; display: inline-flex; align-items: center; gap: 4px; margin-left: 8px;">
+                <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981;"></span>
+                Online
+            </span>
+        </div>
+        <div class="admin-header-actions">
+            <a href="/" target="_blank" class="admin-link-btn">
+                🌐 Открыть витрину
+            </a>
+            <a href="/tracking" target="_blank" class="admin-link-btn">
+                🚚 3D-Трекинг
+            </a>
+            <button onclick="handleAdminLogout()" class="admin-link-btn" style="cursor: pointer;">
+                🔒 Выйти
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="admin-container">
+
+        <!-- Top Overview Stats -->
+        <div class="admin-stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Оборот магазина</div>
+                <div class="stat-val" id="statRevenue">0 ₽</div>
+                <div class="stat-sub">Всего продаж</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Заказов оформлено</div>
+                <div class="stat-val" id="statOrders">0</div>
+                <div class="stat-sub">В базе данных</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Товаров в витрине</div>
+                <div class="stat-val" id="statProducts">0</div>
+                <div class="stat-sub">Доступно покупателям</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Клиентов на сайте</div>
+                <div class="stat-val" id="statClients">0</div>
+                <div class="stat-sub">Зарегистрировано</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Текущий 3D-этап</div>
+                <div class="stat-val" id="statDeliveryStage" style="font-size: 20px; color: #34d399;">На складе</div>
+                <div class="stat-sub">Синхронизировано LIVE</div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="admin-tabs">
+            <button class="tab-btn active" onclick="switchAdminTab('tabDelivery')">🚚 3D-Доставка (Live трекинг)</button>
+            <button class="tab-btn" onclick="switchAdminTab('tabSupport')">💬 Онлайн-поддержка (Live-чаты)</button>
+            <button class="tab-btn" onclick="switchAdminTab('tabProducts')">📦 Товары и Каталог</button>
+            <button class="tab-btn" onclick="switchAdminTab('tabOrders')">🛍 Заказы покупателей</button>
+            <button class="tab-btn" onclick="switchAdminTab('tabPromos')">🏷 Промокоды и Скидки</button>
+            <button class="tab-btn" onclick="switchAdminTab('tabSettings')">⚙️ Настройки витрины</button>
+        </nav>
+
+        <!-- TAB 1: 🚚 Управление 3D-доставкой -->
+        <section class="tab-content active" id="tabDelivery">
+            <div class="panel-card">
+                <div class="panel-title">
+                    <span>🚚 Управление интерактивным 3D-трекингом доставки</span>
+                    <a href="/tracking" target="_blank" class="admin-link-btn" style="font-size: 12px;">Проверить на сайте ➔</a>
+                </div>
+                <p class="panel-subtitle">
+                    Нажмите на любой из 4 этапов ниже: виртуальная 3D-камера и анимация на сайте моментально перелетят к выбранной локации через Socket.IO / WebSockets без перезагрузки!
+                </p>
+
+                <div class="stage-control-grid">
+                    <!-- Stage 1 -->
+                    <div class="stage-card" id="adminStage1" onclick="setDeliveryStageAdmin(1)">
+                        <div class="stage-live-tag">АКТИВЕН</div>
+                        <div class="stage-num-badge">1</div>
+                        <div class="stage-card-title">🏢 На складе</div>
+                        <p class="stage-card-sub">Комплектация, фирменная упаковка в коробку MODEVA, лазерная проверка подлинности и пломбировка.</p>
+                    </div>
+
+                    <!-- Stage 2 -->
+                    <div class="stage-card" id="adminStage2" onclick="setDeliveryStageAdmin(2)">
+                        <div class="stage-live-tag">АКТИВЕН</div>
+                        <div class="stage-num-badge">2</div>
+                        <div class="stage-card-title">📦 Погрузка</div>
+                        <p class="stage-card-sub">Перемещение по логистическому конвейеру и погрузка в курьерский спецтранспорт.</p>
+                    </div>
+
+                    <!-- Stage 3 -->
+                    <div class="stage-card" id="adminStage3" onclick="setDeliveryStageAdmin(3)">
+                        <div class="stage-live-tag">АКТИВЕН</div>
+                        <div class="stage-num-badge">3</div>
+                        <div class="stage-card-title">🛣 В пути</div>
+                        <p class="stage-card-sub">Движение экспресс-фургона по магистрали со спутниковым GPS-мониторингом.</p>
+                    </div>
+
+                    <!-- Stage 4 -->
+                    <div class="stage-card" id="adminStage4" onclick="setDeliveryStageAdmin(4)">
+                        <div class="stage-live-tag">АКТИВЕН</div>
+                        <div class="stage-num-badge">4</div>
+                        <div class="stage-card-title">📍 На месте</div>
+                        <p class="stage-card-sub">Прибытие во флагманский бутик / пункт выдачи. Заказ готов к выдаче клиенту.</p>
+                    </div>
+                </div>
+
+                <div style="background: rgba(255, 255, 255, 0.03); border: 1px dashed rgba(212, 175, 55, 0.3); border-radius: 12px; padding: 14px 20px; font-size: 13px; color: rgba(255, 255, 255, 0.7); display: flex; align-items: center; justify-content: space-between;">
+                    <span>⚡️ Изменение статуса применяется моментально для всех клиентов на сайте.</span>
+                    <button class="btn-gold-save" onclick="refreshAdminData()">🔄 Обновить статус</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: 💬 Онлайн-поддержка (Live-чаты) -->
+        <section class="tab-content" id="tabSupport">
+            <div class="panel-card" style="padding: 20px;">
+                <div class="panel-title" style="padding: 8px 12px;">
+                    <span>💬 Консьерж-служба заботы (Диалоги с клиентами)</span>
+                    <button class="btn-gold-save" onclick="loadSupportChats()" style="font-size: 12px; padding: 6px 16px;">🔄 Обновить чаты</button>
+                </div>
+                <div class="support-split">
+                    <!-- Left: Sessions List -->
+                    <div class="support-sidebar" id="supportSessionsList">
+                        <div style="padding: 24px; text-align: center; color: rgba(255,255,255,0.4); font-size: 13px;">Загрузка диалогов...</div>
+                    </div>
+
+                    <!-- Right: Chat Messages Pane -->
+                    <div class="support-chat-pane">
+                        <div class="chat-pane-header">
+                            <div>
+                                <strong id="currentChatClientName">Выберите диалог слева</strong>
+                                <span id="currentChatSessionId" style="font-size: 11px; color: rgba(255,255,255,0.4); margin-left: 8px;"></span>
+                            </div>
+                            <div id="currentChatPhone" style="font-size: 12px; color: var(--admin-gold);"></div>
+                        </div>
+
+                        <div class="chat-pane-messages" id="supportMessagesContainer">
+                            <div style="text-align: center; margin: auto; color: rgba(255,255,255,0.4); font-size: 13px;">
+                                Нажмите на любой чат из списка слева для просмотра сообщений и ответа покупателю.
+                            </div>
+                        </div>
+
+                        <form class="chat-pane-input-bar" onsubmit="sendSupportReply(event)">
+                            <textarea id="replyTextInput" class="chat-input" rows="2" placeholder="Напишите ответ покупателю как Консьерж MODEVA..."></textarea>
+                            <button type="submit" class="chat-send-btn">Отправить</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: 📦 Товары и Каталог -->
+        <section class="tab-content" id="tabProducts">
+            <div class="panel-card">
+                <div class="panel-title">
+                    <span>📦 Каталог товаров витрины</span>
+                    <button class="btn-gold-save" onclick="toggleAddProductForm()">+ Добавить товар</button>
+                </div>
+                <p class="panel-subtitle">Управляйте ассортиментом, ценами и описанием товаров вашего маркетплейса.</p>
+
+                <!-- Add Product Form (Collapsible) -->
+                <div id="addProductCard" style="display: none; background: rgba(255,255,255,0.03); border: 1px solid var(--admin-border); border-radius: 16px; padding: 24px; margin-bottom: 24px;">
+                    <h4 style="margin: 0 0 16px 0; color: #fef08a;">Новое изделие для витрины</h4>
+                    <form onsubmit="handleAddProduct(event)">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 16px;">
+                            <div class="admin-form-group">
+                                <label>Название товара</label>
+                                <input type="text" id="newProdTitle" class="admin-form-input" placeholder="Например: Louis Vuitton Capucines BB" required>
+                            </div>
+                            <div class="admin-form-group">
+                                <label>Категория</label>
+                                <select id="newProdCategory" class="admin-form-input" style="background: #191c2b;">
+                                    <option value="Сумки">Сумки</option>
+                                    <option value="Обувь">Обувь</option>
+                                    <option value="Одежда">Одежда</option>
+                                    <option value="Аксессуары">Аксессуары</option>
+                                    <option value="Часы">Часы</option>
+                                    <option value="Ювелирные изделия">Ювелирные изделия</option>
+                                </select>
+                            </div>
+                            <div class="admin-form-group">
+                                <label>Цена (₽)</label>
+                                <input type="number" id="newProdPrice" class="admin-form-input" placeholder="120000" required>
+                            </div>
+                            <div class="admin-form-group">
+                                <label>URL фотографии</label>
+                                <input type="text" id="newProdImage" class="admin-form-input" placeholder="/static/images/p1_briefcase.png" required>
+                            </div>
+                        </div>
+                        <div class="admin-form-group">
+                            <label>Описание и характеристики</label>
+                            <input type="text" id="newProdDesc" class="admin-form-input" placeholder="Оригинал, премиальная кожа, фирменная коробка и сертификат">
+                        </div>
+                        <div style="display: flex; gap: 12px;">
+                            <button type="submit" class="btn-gold-save">Опубликовать в каталоге</button>
+                            <button type="button" class="btn-action-del" onclick="toggleAddProductForm()" style="color: #fff; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2);">Отмена</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div style="overflow-x: auto;">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Фото</th>
+                                <th>Название</th>
+                                <th>Категория</th>
+                                <th>Цена (₽)</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productsTableBody">
+                            <tr><td colspan="5" style="text-align: center; color: rgba(255,255,255,0.4);">Загрузка товаров...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: 🛍 Заказы покупателей -->
+        <section class="tab-content" id="tabOrders">
+            <div class="panel-card">
+                <div class="panel-title">
+                    <span>🛍 Заказы покупателей</span>
+                    <button class="btn-gold-save" onclick="loadAdminOrders()">🔄 Обновить</button>
+                </div>
+                <p class="panel-subtitle">Список всех оформленных заказов на сайте с контактными данными клиентов.</p>
+
+                <div style="overflow-x: auto;">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Номер заказа</th>
+                                <th>Дата</th>
+                                <th>Товар</th>
+                                <th>Сумма</th>
+                                <th>Покупатель</th>
+                                <th>Телефон</th>
+                                <th>Адрес доставки</th>
+                                <th>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTableBody">
+                            <tr><td colspan="8" style="text-align: center; color: rgba(255,255,255,0.4);">Загрузка заказов...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: 🏷 Промокоды и Скидки -->
+        <section class="tab-content" id="tabPromos">
+            <div class="panel-card">
+                <div class="panel-title">
+                    <span>🏷 Промокоды и скидки витрины</span>
+                </div>
+                <p class="panel-subtitle">Создавайте реферальные промокоды со специальными процентами скидки для клиентов.</p>
+
+                <form onsubmit="handleCreatePromo(event)" style="display: flex; gap: 14px; margin-bottom: 28px; flex-wrap: wrap;">
+                    <input type="text" id="newPromoCode" class="admin-form-input" style="max-width: 240px;" placeholder="Код (например: VIP25)" required>
+                    <input type="number" id="newPromoDiscount" class="admin-form-input" style="max-width: 160px;" placeholder="Скидка % (1-90)" min="1" max="90" required>
+                    <button type="submit" class="btn-gold-save">Создать промокод</button>
+                </form>
+
+                <div style="overflow-x: auto;">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Промокод</th>
+                                <th>Скидка</th>
+                                <th>Создан</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="promosTableBody">
+                            <tr><td colspan="4" style="text-align: center; color: rgba(255,255,255,0.4);">Загрузка промокодов...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 6: ⚙️ Настройки витрины -->
+        <section class="tab-content" id="tabSettings">
+            <div class="panel-card" style="max-width: 700px;">
+                <div class="panel-title">
+                    <span>⚙️ Настройки витрины маркетплейса</span>
+                </div>
+                <p class="panel-subtitle">Управление брендингом, заголовками главной страницы и рекламными баннерами.</p>
+
+                <form onsubmit="handleSaveSettings(event)">
+                    <div class="admin-form-group">
+                        <label>Название маркетплейса</label>
+                        <input type="text" id="settingSiteName" class="admin-form-input" placeholder="MODEVA">
+                    </div>
+                    <div class="admin-form-group">
+                        <label>Главный заголовок на витрине</label>
+                        <input type="text" id="settingHeroTitle" class="admin-form-input" placeholder="Не просто маркетплейс, a MODEVA — стиль вне времени">
+                    </div>
+                    <div class="admin-form-group">
+                        <label>Подзаголовок витрины</label>
+                        <input type="text" id="settingHeroSubtitle" class="admin-form-input" placeholder="Ваш надёжный посредник с продавцом.">
+                    </div>
+                    <div class="admin-form-group">
+                        <label>Массовое объявление (баннер вверху сайта)</label>
+                        <input type="text" id="settingBroadcast" class="admin-form-input" placeholder="Например: Сезонная скидка до -30% на новую коллекцию аксессуаров!">
+                    </div>
+                    <button type="submit" class="btn-gold-save">Сохранить настройки</button>
+                </form>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // State
+        let currentActiveStage = {{ current_stage|default(1) }};
+        let activeChatSession = null;
+        let socket = null;
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = sessionStorage.getItem('modeva_admin_token');
+            if (token === 'modeva_admin_authorized') {
+                document.getElementById('adminLockScreen').style.display = 'none';
+                initAdminApp();
+            } else {
+                document.getElementById('adminLockScreen').style.display = 'flex';
+            }
+        });
+
+        async function handleAdminLogin(e) {
+            e.preventDefault();
+            const pass = document.getElementById('adminPassInput').value.trim();
+            const errEl = document.getElementById('lockError');
+            errEl.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: pass })
+                });
+                const data = await res.json();
+                if (res.ok && data.status === 'ok') {
+                    sessionStorage.setItem('modeva_admin_token', data.token);
+                    document.getElementById('adminLockScreen').style.display = 'none';
+                    initAdminApp();
+                } else {
+                    errEl.textContent = data.detail || 'Неверный пароль';
+                    errEl.style.display = 'block';
+                }
+            } catch (err) {
+                errEl.textContent = 'Ошибка авторизации. Проверьте соединение.';
+                errEl.style.display = 'block';
+            }
+        }
+
+        function handleAdminLogout() {
+            sessionStorage.removeItem('modeva_admin_token');
+            window.location.reload();
+        }
+
+        function initAdminApp() {
+            initSocket();
+            refreshAdminData();
+            loadSupportChats();
+            loadAdminProducts();
+            loadAdminOrders();
+            loadAdminPromos();
+            loadAdminSettings();
+        }
+
+        function initSocket() {
+            try {
+                socket = io();
+                socket.on('delivery_stage_update', (data) => {
+                    const stg = parseInt(data.current_stage || data.stage);
+                    if (stg) {
+                        highlightStageUI(stg);
+                    }
+                });
+                socket.on('support_message', (msg) => {
+                    if (activeChatSession && msg.session_id === activeChatSession) {
+                        appendMessageToPane(msg);
+                    }
+                    loadSupportChats();
+                });
+            } catch(e) {}
+        }
+
+        function switchAdminTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            const btn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabId));
+            if (btn) btn.classList.add('active');
+            
+            const target = document.getElementById(tabId);
+            if (target) target.classList.add('active');
+        }
+
+        async function refreshAdminData() {
+            try {
+                const res = await fetch('/api/admin/stats');
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    const s = data.stats;
+                    document.getElementById('statRevenue').textContent = `${Math.round(s.total_revenue).toLocaleString('ru-RU')} ₽`;
+                    document.getElementById('statOrders').textContent = s.total_orders;
+                    document.getElementById('statProducts').textContent = s.total_products;
+                    document.getElementById('statClients').textContent = s.total_clients;
+                    document.getElementById('statDeliveryStage').textContent = s.delivery_stage_name;
+                    highlightStageUI(s.delivery_stage);
+                }
+            } catch(e) {}
+        }
+
+        function highlightStageUI(stageNum) {
+            currentActiveStage = stageNum;
+            for (let i = 1; i <= 4; i++) {
+                const el = document.getElementById('adminStage' + i);
+                if (el) el.classList.toggle('active', i === stageNum);
+            }
+        }
+
+        async function setDeliveryStageAdmin(stageNum) {
+            try {
+                const res = await fetch('/api/admin/delivery-stage', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stage: stageNum, order_number: 'GLOBAL' })
+                });
+                if (res.ok) {
+                    highlightStageUI(stageNum);
+                    refreshAdminData();
+                }
+            } catch(e) {}
+        }
+
+        // Support Live Chat
+        async function loadSupportChats() {
+            try {
+                const res = await fetch('/api/admin/support/chats');
+                const data = await res.json();
+                const container = document.getElementById('supportSessionsList');
+                if (!data.sessions || data.sessions.length === 0) {
+                    container.innerHTML = '<div style="padding: 24px; text-align: center; color: rgba(255,255,255,0.4); font-size: 13px;">Диалогов пока нет. Когда покупатель напишет в чат на сайте, он появится здесь.</div>';
+                    return;
+                }
+                container.innerHTML = data.sessions.map(s => `
+                    <div class="session-item ${activeChatSession === s.session_id ? 'active' : ''}" onclick="openChatSession('${s.session_id}', '${s.client_name || "Покупатель"}', '${s.client_phone || ""}')">
+                        <div class="session-item-header">
+                            <span class="session-client-name">${s.client_name || 'Покупатель'}</span>
+                            <span class="session-time">${s.last_active ? s.last_active.slice(11, 16) : ''}</span>
+                        </div>
+                        <div class="session-preview">${s.last_message || '...'}</div>
+                    </div>
+                `).join('');
+            } catch(e) {}
+        }
+
+        async function openChatSession(sessionId, clientName, clientPhone) {
+            activeChatSession = sessionId;
+            document.getElementById('currentChatClientName').textContent = clientName;
+            document.getElementById('currentChatSessionId').textContent = `#${sessionId.slice(0, 10)}`;
+            document.getElementById('currentChatPhone').textContent = clientPhone ? `📱 ${clientPhone}` : '';
+
+            document.querySelectorAll('.session-item').forEach(el => el.classList.remove('active'));
+            loadSupportChats();
+
+            try {
+                const res = await fetch(`/api/admin/support/messages?session_id=${encodeURIComponent(sessionId)}`);
+                const data = await res.json();
+                const msgBox = document.getElementById('supportMessagesContainer');
+                if (!data.messages || data.messages.length === 0) {
+                    msgBox.innerHTML = '<div style="margin: auto; color: rgba(255,255,255,0.4); font-size: 13px;">В этом диалоге пока нет сообщений.</div>';
+                    return;
+                }
+                msgBox.innerHTML = data.messages.map(m => `
+                    <div class="chat-bubble ${m.sender === 'client' ? 'client' : 'support'}">
+                        <div style="font-size: 10px; opacity: 0.6; margin-bottom: 2px;">${m.sender === 'client' ? (m.client_name || 'Покупатель') : 'Консьерж MODEVA'}</div>
+                        <div>${escapeHtml(m.message)}</div>
+                    </div>
+                `).join('');
+                msgBox.scrollTop = msgBox.scrollHeight;
+            } catch(e) {}
+        }
+
+        function appendMessageToPane(msg) {
+            const msgBox = document.getElementById('supportMessagesContainer');
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${msg.sender === 'client' ? 'client' : 'support'}`;
+            bubble.innerHTML = `
+                <div style="font-size: 10px; opacity: 0.6; margin-bottom: 2px;">${msg.sender === 'client' ? (msg.client_name || 'Покупатель') : 'Консьерж MODEVA'}</div>
+                <div>${escapeHtml(msg.message)}</div>
+            `;
+            msgBox.appendChild(bubble);
+            msgBox.scrollTop = msgBox.scrollHeight;
+        }
+
+        async function sendSupportReply(e) {
+            e.preventDefault();
+            if (!activeChatSession) {
+                alert('Сначала выберите диалог из списка слева!');
+                return;
+            }
+            const input = document.getElementById('replyTextInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            try {
+                const res = await fetch('/api/admin/support/reply', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: activeChatSession,
+                        message: text,
+                        manager_name: 'Консьерж MODEVA'
+                    })
+                });
+                if (res.ok) {
+                    input.value = '';
+                    openChatSession(activeChatSession, document.getElementById('currentChatClientName').textContent, '');
+                }
+            } catch(e) {}
+        }
+
+        // Products
+        async function loadAdminProducts() {
+            try {
+                const res = await fetch('/api/admin/products');
+                const data = await res.json();
+                const tbody = document.getElementById('productsTableBody');
+                if (!data.products || data.products.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: rgba(255,255,255,0.4);">Товаров нет.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.products.map(p => `
+                    <tr>
+                        <td><img src="${p.image_url}" class="table-thumb" alt="${escapeHtml(p.title)}"></td>
+                        <td><strong>${escapeHtml(p.title)}</strong><div style="font-size: 11px; color: rgba(255,255,255,0.4);">${escapeHtml(p.description || '')}</div></td>
+                        <td>${escapeHtml(p.category)}</td>
+                        <td><strong style="color: var(--admin-gold);">${Math.round(p.price).toLocaleString('ru-RU')} ₽</strong></td>
+                        <td>
+                            <button class="btn-action-del" onclick="deleteProductAdmin(${p.id})">Удалить</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch(e) {}
+        }
+
+        function toggleAddProductForm() {
+            const card = document.getElementById('addProductCard');
+            card.style.display = card.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function handleAddProduct(e) {
+            e.preventDefault();
+            const title = document.getElementById('newProdTitle').value.trim();
+            const category = document.getElementById('newProdCategory').value;
+            const price = parseFloat(document.getElementById('newProdPrice').value);
+            const image = document.getElementById('newProdImage').value.trim();
+            const desc = document.getElementById('newProdDesc').value.trim();
+
+            try {
+                const res = await fetch('/api/admin/products', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, category, price, image_url: image, description: desc })
+                });
+                if (res.ok) {
+                    toggleAddProductForm();
+                    loadAdminProducts();
+                    refreshAdminData();
+                }
+            } catch(e) {}
+        }
+
+        async function deleteProductAdmin(id) {
+            if (!confirm('Вы уверены, что хотите удалить этот товар из витрины?')) return;
+            try {
+                await fetch(`/api/admin/products/${id}`, { method: 'DELETE' });
+                loadAdminProducts();
+                refreshAdminData();
+            } catch(e) {}
+        }
+
+        // Orders
+        async function loadAdminOrders() {
+            try {
+                const res = await fetch('/api/admin/orders');
+                const data = await res.json();
+                const tbody = document.getElementById('ordersTableBody');
+                if (!data.orders || data.orders.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: rgba(255,255,255,0.4);">Заказов пока нет.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.orders.map(o => `
+                    <tr>
+                        <td><strong>#${o.order_number}</strong></td>
+                        <td>${o.created_at ? o.created_at.slice(0, 16) : ''}</td>
+                        <td>${escapeHtml(o.product_title || '')}</td>
+                        <td><strong style="color: var(--admin-gold);">${Math.round(o.final_price).toLocaleString('ru-RU')} ₽</strong></td>
+                        <td>${escapeHtml(o.client_name || '')}</td>
+                        <td><code>${escapeHtml(o.client_phone || '')}</code></td>
+                        <td><span style="font-size: 11px;">${escapeHtml(o.client_address || '')}</span></td>
+                        <td>
+                            <select onchange="updateOrderStatusAdmin('${o.order_number}', this.value)" style="background: #151825; border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 4px 8px; border-radius: 6px; font-size: 12px;">
+                                <option value="Оплачен" ${o.status === 'Оплачен' ? 'selected' : ''}>Оплачен</option>
+                                <option value="В обработке" ${o.status === 'В обработке' ? 'selected' : ''}>В обработке</option>
+                                <option value="Отправлен" ${o.status === 'Отправлен' ? 'selected' : ''}>Отправлен</option>
+                                <option value="Доставлен" ${o.status === 'Доставлен' ? 'selected' : ''}>Доставлен</option>
+                            </select>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch(e) {}
+        }
+
+        async function updateOrderStatusAdmin(orderNum, status) {
+            try {
+                await fetch(`/api/admin/orders/${orderNum}/status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status })
+                });
+            } catch(e) {}
+        }
+
+        // Promos
+        async function loadAdminPromos() {
+            try {
+                const res = await fetch('/api/admin/promos');
+                const data = await res.json();
+                const tbody = document.getElementById('promosTableBody');
+                if (!data.promos || data.promos.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: rgba(255,255,255,0.4);">Промокодов пока нет.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.promos.map(p => `
+                    <tr>
+                        <td><strong>${escapeHtml(p.promo_code)}</strong></td>
+                        <td><span style="color: #34d399; font-weight: 700;">-${p.discount_percent}%</span></td>
+                        <td>${p.created_at ? p.created_at.slice(0, 10) : ''}</td>
+                        <td><button class="btn-action-del" onclick="deletePromoAdmin('${p.promo_code}')">Удалить</button></td>
+                    </tr>
+                `).join('');
+            } catch(e) {}
+        }
+
+        async function handleCreatePromo(e) {
+            e.preventDefault();
+            const code = document.getElementById('newPromoCode').value.trim();
+            const discount = parseInt(document.getElementById('newPromoDiscount').value);
+            try {
+                const res = await fetch('/api/admin/promos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ promo_code: code, discount_percent: discount })
+                });
+                if (res.ok) {
+                    document.getElementById('newPromoCode').value = '';
+                    document.getElementById('newPromoDiscount').value = '';
+                    loadAdminPromos();
+                }
+            } catch(e) {}
+        }
+
+        async function deletePromoAdmin(code) {
+            if (!confirm(`Удалить промокод ${code}?`)) return;
+            try {
+                await fetch(`/api/admin/promos/${encodeURIComponent(code)}`, { method: 'DELETE' });
+                loadAdminPromos();
+            } catch(e) {}
+        }
+
+        // Settings
+        async function loadAdminSettings() {
+            try {
+                const res = await fetch('/api/admin/settings');
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    const s = data.settings;
+                    if (s.site_name) document.getElementById('settingSiteName').value = s.site_name;
+                    if (s.site_hero_title) document.getElementById('settingHeroTitle').value = s.site_hero_title;
+                    if (s.site_hero_subtitle) document.getElementById('settingHeroSubtitle').value = s.site_hero_subtitle;
+                    if (s.broadcast_announcement) document.getElementById('settingBroadcast').value = s.broadcast_announcement;
+                }
+            } catch(e) {}
+        }
+
+        async function handleSaveSettings(e) {
+            e.preventDefault();
+            const site_name = document.getElementById('settingSiteName').value.trim();
+            const site_hero_title = document.getElementById('settingHeroTitle').value.trim();
+            const site_hero_subtitle = document.getElementById('settingHeroSubtitle').value.trim();
+            const broadcast_message = document.getElementById('settingBroadcast').value.trim();
+
+            try {
+                const res = await fetch('/api/admin/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ site_name, site_hero_title, site_hero_subtitle, broadcast_message })
+                });
+                if (res.ok) {
+                    alert('Настройки витрины успешно сохранены!');
+                }
+            } catch(e) {}
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>

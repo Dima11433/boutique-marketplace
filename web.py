@@ -1,7 +1,6 @@
 import os
 import json
 import logging
-import httpx
 import socketio
 from fastapi import FastAPI, Request, HTTPException, Form, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -14,18 +13,7 @@ import config
 import database as db
 
 logger = logging.getLogger("web")
-raw_bot_api = os.getenv("BOT_API_URL", "").strip().rstrip("/")
-if raw_bot_api and not raw_bot_api.startswith("http://") and not raw_bot_api.startswith("https://"):
-    BOT_API_URL = f"http://{raw_bot_api}"
-else:
-    BOT_API_URL = raw_bot_api
-
-try:
-    from bot import notify_worker, log_to_channel, post_profit_to_channel
-except Exception:
-    async def notify_worker(*args, **kwargs): pass
-    async def log_to_channel(*args, **kwargs): pass
-    async def post_profit_to_channel(*args, **kwargs): return True, ""
+ADMIN_SECRET = os.getenv("ADMIN_SECRET", "modeva2026")
 
 app = FastAPI(title="MODEVA Marketplace")
 
@@ -66,23 +54,17 @@ class WebSocketConnectionManager:
 ws_manager = WebSocketConnectionManager()
 
 async def broadcast_delivery_update(stage_data: dict):
-    # 1. Emit via socket.io
     try:
         await sio.emit("delivery_stage_update", stage_data)
     except Exception as e:
         logger.warning(f"Error emitting via socketio: {e}")
-
-    # 2. Emit via native websockets
     await ws_manager.broadcast(stage_data)
 
 async def broadcast_support_message(msg_data: dict):
-    # 1. Emit via socket.io
     try:
         await sio.emit("support_message", msg_data)
     except Exception as e:
         logger.warning(f"Error emitting support message via socketio: {e}")
-
-    # 2. Emit via native websockets
     await ws_manager.broadcast({
         "type": "support_message",
         "data": msg_data
@@ -115,6 +97,11 @@ class RegisterRequest(BaseModel):
     email: Optional[str] = ""
     password: Optional[str] = "123456"
     promo_code: Optional[str] = ""
+
+
+class LoginRequest(BaseModel):
+    login: str
+    password: Optional[str] = ""
 
 
 class OrderRequest(BaseModel):
@@ -150,46 +137,62 @@ class SupportReplyRequest(BaseModel):
     manager_name: Optional[str] = "Консьерж MODEVA"
 
 
-# --- Routes ---
+class AdminLoginRequest(BaseModel):
+    password: str
+
+
+class AdminProductCreateRequest(BaseModel):
+    title: str
+    category: str
+    price: float
+    image_url: str
+    description: Optional[str] = ""
+
+
+class AdminProductPriceUpdateRequest(BaseModel):
+    price: float
+
+
+class AdminOrderStatusUpdateRequest(BaseModel):
+    status: str
+    delivery_stage: Optional[int] = None
+
+
+class AdminPromoCreateRequest(BaseModel):
+    promo_code: str
+    discount_percent: int
+
+
+class AdminSettingsUpdateRequest(BaseModel):
+    site_name: Optional[str] = "MODEVA"
+    site_hero_title: Optional[str] = None
+    site_hero_subtitle: Optional[str] = None
+    broadcast_message: Optional[str] = None
+
+
+# --- Customer Marketplace Routes ---
 
 @app.get("/", response_class=HTMLResponse)
 async def home_page(request: Request, ref: Optional[str] = None, promo: Optional[str] = None):
     active_promo = (promo or ref or "").strip()
-    worker = None
     discount = 0
     broadcast_msg = None
 
-    # Load dynamic site settings (support, site name, hero texts)
-    settings = {}
-    if BOT_API_URL:
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                res = await client.get(f"{BOT_API_URL}/api/internal/settings")
-                if res.status_code == 200:
-                    settings = res.json()
-        except Exception:
-            pass
-    if not settings:
-        settings = await db.get_site_settings()
-
+    settings = await db.get_site_settings()
     support_username = settings.get("support_username", config.SUPPORT_USERNAME)
     site_name = settings.get("site_name", "MODEVA")
     site_hero_title = settings.get("site_hero_title", "Не просто маркетплейс, a MODEVA — стиль вне времени")
     site_hero_subtitle = settings.get("site_hero_subtitle", "Ваш надёжный посредник с продавцом.")
 
+    announcement = await db.get_bot_setting("broadcast_announcement", "")
+    if announcement:
+        broadcast_msg = announcement
+
     if active_promo:
-        if BOT_API_URL:
-            try:
-                async with httpx.AsyncClient(timeout=5.0) as client:
-                    res = await client.get(f"{BOT_API_URL}/api/internal/promo", params={"code": active_promo})
-                    if res.status_code == 200 and res.json().get("valid"):
-                        discount = res.json().get("discount_percent", 0)
-            except Exception:
-                pass
-        else:
-            worker = await db.get_worker_by_promo(active_promo)
-            if worker:
-                discount = worker.get("discount_percent", 0)
+        worker = await db.get_worker_by_promo(active_promo)
+        if worker:
+            discount = worker.get("discount_percent", 0)
+            if not broadcast_msg:
                 latest_bc = await db.get_latest_broadcast_for_promo(active_promo)
                 if latest_bc:
                     broadcast_msg = latest_bc["message"]
@@ -199,7 +202,6 @@ async def home_page(request: Request, ref: Optional[str] = None, promo: Optional
         name="index.html",
         context={
             "promo_code": active_promo,
-            "worker": worker,
             "discount": discount,
             "broadcast_message": broadcast_msg,
             "support_username": support_username,
@@ -212,41 +214,17 @@ async def home_page(request: Request, ref: Optional[str] = None, promo: Optional
 
 @app.get("/api/products")
 async def get_products(category: Optional[str] = None, search: Optional[str] = None, promo: Optional[str] = None):
-    products = []
-    if BOT_API_URL:
-        try:
-            params = {}
-            if category: params["category"] = category
-            if search: params["search"] = search
-            if promo: params["promo_code"] = promo
-            async with httpx.AsyncClient(timeout=8.0) as client:
-                res = await client.get(f"{BOT_API_URL}/api/internal/catalog", params=params)
-                if res.status_code == 200:
-                    products = res.json().get("products", [])
-        except Exception as e:
-            logger.warning(f"Error fetching catalog via BOT_API_URL: {e}")
-
-    if not products:
-        try:
-            products = await db.get_catalog_products(category=category, search=search, promo_code=promo)
-        except Exception as e:
-            logger.warning(f"Error fetching catalog, initializing DB: {e}")
-            await db.init_db()
-            products = await db.get_catalog_products(category=category, search=search, promo_code=promo)
+    try:
+        products = await db.get_catalog_products(category=category, search=search, promo_code=promo)
+    except Exception as e:
+        logger.warning(f"Error fetching catalog, initializing DB: {e}")
+        await db.init_db()
+        products = await db.get_catalog_products(category=category, search=search, promo_code=promo)
 
     discount_pct = 0
     if promo:
-        if BOT_API_URL:
-            try:
-                async with httpx.AsyncClient(timeout=4.0) as client:
-                    res = await client.get(f"{BOT_API_URL}/api/internal/promo", params={"code": promo})
-                    if res.status_code == 200 and res.json().get("valid"):
-                        discount_pct = res.json().get("discount_percent", 0)
-            except Exception:
-                pass
-        else:
-            worker = await db.get_worker_by_promo(promo)
-            discount_pct = worker.get("discount_percent", 0) if worker else 0
+        worker = await db.get_worker_by_promo(promo)
+        discount_pct = worker.get("discount_percent", 0) if worker else 0
 
     results = []
     for p in products:
@@ -291,23 +269,6 @@ async def get_product(product_id: int, promo: Optional[str] = None):
 
 @app.get("/api/promo/check")
 async def check_promo(code: str):
-    if BOT_API_URL:
-        try:
-            async with httpx.AsyncClient(timeout=6.0) as client:
-                res = await client.get(f"{BOT_API_URL}/api/internal/promo", params={"code": code})
-                if res.status_code == 200:
-                    d = res.json()
-                    if d.get("valid"):
-                        return {
-                            "valid": True,
-                            "promo": d["promo"],
-                            "discount_percent": d["discount_percent"],
-                            "message": f"Скидка {d['discount_percent']}% успешно применена!"
-                        }
-                    return {"valid": False, "message": "Промокод не найден"}
-        except Exception as e:
-            logger.warning(f"Failed to check promo via BOT_API_URL: {e}")
-
     worker = await db.get_worker_by_promo(code)
     if not worker:
         return {"valid": False, "message": "Промокод не найден"}
@@ -345,49 +306,25 @@ async def api_register(data: RegisterRequest):
             logger.error(f"Fatal registration error: {err2}")
             raise HTTPException(status_code=400, detail="Ошибка при создании аккаунта. Пожалуйста, проверьте данные.")
 
-    # If linked to a worker, send notification to worker bot!
-    if worker and is_new:
-        try:
-            user_mention = f"@{worker.get('username')}" if worker.get('username') else f"ID: {worker['telegram_id']}"
-            worker_notif = (
-                f"👤 <b>НОВЫЙ КЛИЕНТ ЗАКРЕПЛЕН ЗА ВАМИ!</b>\n\n"
-                f"🏷 <b>Промокод:</b> <code>{worker['promo_code']}</code>\n"
-                f"👤 <b>Имя:</b> {data.name}\n"
-                f"📱 <b>Телефон:</b> <code>{data.phone or 'не указан'}</code>\n"
-                f"✉️ <b>Email:</b> <code>{data.email or 'не указан'}</code>\n\n"
-                f"🎉 Теперь любые покупки этого клиента будут приносить вам выплату!"
-            )
-            await notify_worker(worker["telegram_id"], worker_notif)
-
-            channel_log = (
-                f"👤 <b>РЕГИСТРАЦИЯ НОВОГО КЛИЕНТА</b>\n\n"
-                f"👨‍💻 <b>Воркер:</b> {user_mention}\n"
-                f"🏷 <b>Промокод:</b> <code>{worker['promo_code']}</code>\n"
-                f"👤 <b>Клиент:</b> {data.name} (📱 {data.phone or 'нет'})\n"
-                f"✉️ <b>Email:</b> {data.email or 'нет'}"
-            )
-            await log_to_channel(channel_log)
-        except Exception as e:
-            logger.warning(f"Error notifying worker on registration: {e}")
-
     return {"status": "ok", "client": client, "worker_linked": bool(worker)}
+
+
+@app.post("/api/login")
+async def api_login(data: LoginRequest):
+    client = await db.verify_client_login(data.login, data.password)
+    if not client:
+        # Graceful auto-creation if not exists
+        client, _, _ = await db.register_client(
+            name=data.login.split("@")[0] or "Покупатель",
+            phone=data.login if "@" not in data.login else "",
+            email=data.login if "@" in data.login else f"{data.login}@modeva.store",
+            password=data.password or "123456"
+        )
+    return {"status": "ok", "client": client}
 
 
 @app.post("/api/orders")
 async def api_create_order(data: OrderRequest):
-    if BOT_API_URL:
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                res = await client.post(f"{BOT_API_URL}/api/internal/order", json=data.model_dump())
-                if res.status_code == 200:
-                    return res.json()
-                elif res.status_code == 404:
-                    raise HTTPException(status_code=404, detail="Товар не найден")
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.warning(f"Failed to submit order via BOT_API_URL, falling back to local: {e}")
-
     product = await db.get_product_by_id(data.product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Товар не найден")
@@ -398,15 +335,10 @@ async def api_create_order(data: OrderRequest):
     orig_price = float(product["price"])
     final_price = round(orig_price * (1 - discount_pct / 100), 2)
 
-    # Worker payout (e.g. 70% of the sale or worker's payout_percent)
-    payout_pct = worker.get("payout_percent", 70) if worker else 0
-    worker_payout = round(final_price * (payout_pct / 100), 2) if worker else 0.0
-
-    # Auto-register client if not registered
     client, _, _ = await db.register_client(
         name=data.client_name,
         phone=data.client_phone,
-        email=f"client_{data.client_phone}@modeva.store",
+        email=f"client_{data.client_phone.replace('+', '').replace(' ', '')}@modeva.store",
         password="auto",
         promo_code=data.promo_code
     )
@@ -425,97 +357,11 @@ async def api_create_order(data: OrderRequest):
         promo_code=data.promo_code or ""
     )
 
-    worker_payout = order.get("worker_payout", 0.0)
-    mentor_payout = order.get("mentor_payout", 0.0)
-    mentor_worker = order.get("mentor_worker")
-
-    # Send Notification to Worker
-    if worker:
-        payout_usd = round(worker_payout / config.USD_RUB_RATE, 2)
-        worker_notif = (
-            f"💰 <b>НОВАЯ ОПЛАТА ЗАКАЗА!</b>\n\n"
-            f"🧾 <b>Номер заказа:</b> <code>#{order['order_number']}</code>\n"
-            f"📦 <b>Товар:</b> {product['title']}\n"
-            f"💵 <b>Исходная цена:</b> {orig_price:,.0f} ₽\n"
-            f"🏷 <b>Скидка:</b> {discount_pct}%\n"
-            f"💳 <b>Итого к оплате:</b> <b>{final_price:,.0f} ₽</b>\n\n"
-            f"💸 <b>ВАША ВЫПЛАТА:</b> <b>+{worker_payout:,.0f} ₽ (~{payout_usd}$)</b>\n"
-            f"(зачислено на баланс в профиле)\n\n"
-            f"👤 <b>Покупатель:</b> {data.client_name}\n"
-            f"📱 <b>Телефон:</b> <code>{data.client_phone}</code>\n"
-            f"📍 <b>Адрес доставки:</b> {data.client_address}"
-        )
-        if mentor_worker:
-            worker_notif += f"\n\n🎓 <i>(Учтена доля наставника @{mentor_worker.get('username')}: 20%)</i>"
-        await notify_worker(worker["telegram_id"], worker_notif)
-
-        # If mentor exists, notify mentor
-        if mentor_worker and mentor_payout > 0:
-            mentor_usd = round(mentor_payout / config.USD_RUB_RATE, 2)
-            mentor_notif = (
-                f"🎓 <b>ПРОФИТ ВАШЕГО УЧЕНИКА!</b>\n\n"
-                f"👤 Ученик: @{worker.get('username') or worker['telegram_id']}\n"
-                f"📦 Заказ: #{order['order_number']} на сумму <b>{final_price:,.0f} ₽</b>\n"
-                f"💰 <b>Ваша доля куратора (20%):</b> <b>+{mentor_payout:,.0f} ₽ (~{mentor_usd}$)</b>\n"
-                f"(баланс наставника пополнен)"
-            )
-            await notify_worker(mentor_worker["telegram_id"], mentor_notif)
-
-        # Send Log to Channel
-        worker_mention = f"@{worker.get('username')}" if worker.get('username') else f"ID: {worker['telegram_id']}"
-        channel_log = (
-            f"🛍 <b>НОВАЯ ПОКУПКА В МАГАЗИНЕ!</b>\n\n"
-            f"🧾 <b>Заказ:</b> <code>#{order['order_number']}</code>\n"
-            f"👨‍💻 <b>Воркер:</b> {worker_mention}\n"
-            f"🏷 <b>Промокод:</b> <code>{data.promo_code}</code> (-{discount_pct}%)\n"
-            f"📦 <b>Товар:</b> {product['title']}\n"
-            f"💳 <b>Оплачено:</b> <b>{final_price:,.0f} ₽</b>\n"
-            f"💰 <b>Выплата воркеру:</b> <b>{worker_payout:,.0f} ₽</b>\n"
-        )
-        if mentor_worker:
-            channel_log += f"🎓 <b>Доля куратора @{mentor_worker.get('username')}:</b> <b>{mentor_payout:,.0f} ₽</b>\n"
-        channel_log += (
-            f"👤 <b>Покупатель:</b> {data.client_name} (📱 <code>{data.client_phone}</code>)\n"
-            f"📍 <b>Адрес:</b> {data.client_address}"
-        )
-        await log_to_channel(channel_log)
-
-        # Post profit to dedicated channel (worker nickname strictly WITHOUT '@')
-        worker_clean_nick = (worker.get("username") or worker.get("first_name") or f"Воркер #{worker['id']}").replace("@", "").strip()
-        await post_profit_to_channel(
-            worker_name=worker_clean_nick,
-            profit_rub=worker_payout,
-            total_order_rub=final_price,
-            order_number=order.get("order_number", "")
-        )
-
     return {"status": "ok", "order": order}
 
 
 @app.post("/api/action-log")
 async def api_action_log(data: ActionLogRequest):
-    if not data.promo_code:
-        return {"status": "skipped"}
-
-    if BOT_API_URL:
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                res = await client.post(f"{BOT_API_URL}/api/internal/action-log", json=data.model_dump())
-                if res.status_code == 200:
-                    return res.json()
-        except Exception as e:
-            logger.warning(f"Failed to forward action log via BOT_API_URL: {e}")
-
-    worker = await db.get_worker_by_promo(data.promo_code)
-    if not worker or not worker.get("action_logs", 1):
-        return {"status": "disabled"}
-
-    # Worker has live logs enabled
-    action_text = f"⚡️ <b>[Логи сайта]</b> Клиент <b>{data.client_name}</b> {data.action}"
-    if data.product_title:
-        action_text += f": «{data.product_title}»"
-
-    await notify_worker(worker["telegram_id"], action_text)
     return {"status": "ok"}
 
 
@@ -562,7 +408,6 @@ async def websocket_tracking(websocket: WebSocket, order_number: Optional[str] =
     await ws_manager.connect(websocket)
     ord_num = (order_number or "GLOBAL").strip().upper()
     try:
-        # Immediately send current state on connect
         curr = await db.get_delivery_stage(ord_num)
         await websocket.send_json(curr)
         while True:
@@ -592,7 +437,6 @@ async def api_send_support_message(data: SupportMessageRequest):
     if not msg_text:
         raise HTTPException(status_code=400, detail="Сообщение не может быть пустым")
 
-    # 1. Save client message
     saved_msg = await db.save_support_message(
         session_id=session_id,
         sender="client",
@@ -601,46 +445,9 @@ async def api_send_support_message(data: SupportMessageRequest):
         client_phone=data.client_phone
     )
 
-    # 2. Real-time broadcast
     await broadcast_support_message(saved_msg)
 
-    # 3. Notify Telegram Bot / Channel
-    try:
-        user_info = f"<b>{data.client_name}</b>"
-        if data.client_phone:
-            user_info += f" (📱 <code>{data.client_phone}</code>)"
-
-        tg_text = (
-            f"💬 <b>НОВОЕ ОБРАЩЕНИЕ В ОНЛАЙН-ПОДДЕРЖКУ НА САЙТЕ</b>\n\n"
-            f"👤 <b>Покупатель:</b> {user_info}\n"
-            f"🆔 <b>Сессия диалога:</b> <code>{session_id}</code>\n"
-            f"✉️ <b>Сообщение:</b>\n<i>«{msg_text}»</i>\n\n"
-            f"✍️ <i>Для ответа клиенту на сайте отправьте команду:</i>\n"
-            f"<code>/reply {session_id} ваш_ответ</code>"
-        )
-        reply_kb = None
-        try:
-            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-            reply_kb = InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [InlineKeyboardButton(text="💬 Ответить клиенту на сайте", callback_data=f"sup_reply:{session_id}")],
-                    [InlineKeyboardButton(text="📋 Все онлайн-чаты", callback_data="admin_support_chats_menu")]
-                ]
-            )
-        except Exception:
-            pass
-
-        await log_to_channel(tg_text, reply_markup=reply_kb)
-        # Notify admins directly
-        for admin_id in config.ADMIN_IDS:
-            try:
-                await notify_worker(admin_id, tg_text, reply_markup=reply_kb)
-            except Exception:
-                pass
-    except Exception as e:
-        logger.warning(f"Error notifying telegram about support message: {e}")
-
-    # 4. Instant Smart Concierge Assistance (if manager hasn't replied yet)
+    # Smart Concierge Auto-reply for instant customer satisfaction
     lowered = msg_text.lower()
     auto_reply = None
     if any(k in lowered for k in ["заказ", "доставк", "где", "трек", "статус"]):
@@ -652,13 +459,13 @@ async def api_send_support_message(data: SupportMessageRequest):
         )
     elif any(k in lowered for k in ["промокод", "скидк", "бонус", "реферал", "код"]):
         auto_reply = (
-            f"Здравствуйте! Для получения эксклюзивной скидки до 30% используйте промокод MODEVA-VIP при оформлении заказа или регистрации. "
+            f"Здравствуйте! Для получения эксклюзивной скидки используйте промокод MODEVA-VIP при оформлении заказа или регистрации. "
             f"Скидка рассчитывается моментально!"
         )
     elif any(k in lowered for k in ["оплат", "карт", "деньг", "гарант", "чек"]):
         auto_reply = (
             f"Каждая покупка в бутике MODEVA защищена гарантией подлинности и экспертной опломбировкой. "
-            f"Оплата происходит безопасно. Дежурный консьерж службы заботы уже подключен к диалогу!"
+            f"Оплата происходит безопасно. Дежурный консьерж службы заботы подключен к диалогу!"
         )
 
     if auto_reply:
@@ -703,3 +510,152 @@ async def api_internal_support_sessions(limit: int = 20):
     sessions = await db.get_recent_support_sessions(limit)
     return {"status": "ok", "sessions": sessions}
 
+
+# --- 👑 Pure Marketplace Web Admin Dashboard API ---
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_page(request: Request):
+    settings = await db.get_site_settings()
+    stage = await db.get_delivery_stage("GLOBAL")
+    return templates.TemplateResponse(
+        request=request,
+        name="admin.html",
+        context={
+            "site_name": settings.get("site_name", "MODEVA"),
+            "current_stage": stage.get("current_stage", 1)
+        }
+    )
+
+
+@app.post("/api/admin/login")
+async def api_admin_login(data: AdminLoginRequest):
+    if data.password.strip() == ADMIN_SECRET:
+        return {"status": "ok", "token": "modeva_admin_authorized"}
+    raise HTTPException(status_code=401, detail="Неверный пароль администратора")
+
+
+@app.get("/api/admin/stats")
+async def api_admin_stats():
+    stats = await db.get_marketplace_stats()
+    return {"status": "ok", "stats": stats}
+
+
+@app.get("/api/admin/orders")
+async def api_admin_orders(limit: int = 50):
+    orders = await db.get_all_orders(limit)
+    return {"status": "ok", "orders": orders}
+
+
+@app.post("/api/admin/orders/{order_number}/status")
+async def api_admin_order_status(order_number: str, data: AdminOrderStatusUpdateRequest):
+    await db.update_order_status(order_number, data.status, data.delivery_stage)
+    if data.delivery_stage:
+        updated = await db.set_delivery_stage(data.delivery_stage, order_number)
+        await broadcast_delivery_update(updated)
+    return {"status": "ok"}
+
+
+@app.get("/api/admin/products")
+async def api_admin_products():
+    products = await db.get_all_store_products()
+    return {"status": "ok", "products": products}
+
+
+@app.post("/api/admin/products")
+async def api_admin_create_product(data: AdminProductCreateRequest):
+    product = await db.add_store_product(
+        title=data.title.strip(),
+        category=data.category.strip(),
+        price=data.price,
+        image_url=data.image_url.strip(),
+        description=data.description.strip() or "Премиальное изделие MODEVA"
+    )
+    return {"status": "ok", "product": product}
+
+
+@app.delete("/api/admin/products/{product_id}")
+async def api_admin_delete_product(product_id: int):
+    await db.delete_product(product_id)
+    return {"status": "ok"}
+
+
+@app.put("/api/admin/products/{product_id}/price")
+async def api_admin_update_product_price(product_id: int, data: AdminProductPriceUpdateRequest):
+    await db.update_product_price(product_id, data.price)
+    return {"status": "ok"}
+
+
+@app.post("/api/admin/delivery-stage")
+async def api_admin_delivery_stage(data: DeliveryStageUpdateRequest):
+    updated = await db.set_delivery_stage(data.stage, data.order_number)
+    await broadcast_delivery_update(updated)
+    return {"status": "ok", "delivery": updated}
+
+
+@app.get("/api/admin/support/chats")
+async def api_admin_support_chats(limit: int = 30):
+    sessions = await db.get_recent_support_sessions(limit)
+    return {"status": "ok", "sessions": sessions}
+
+
+@app.get("/api/admin/support/messages")
+async def api_admin_support_messages(session_id: str):
+    msgs = await db.get_support_messages(session_id)
+    await db.mark_support_messages_read(session_id)
+    return {"status": "ok", "messages": msgs}
+
+
+@app.post("/api/admin/support/reply")
+async def api_admin_support_reply(data: SupportReplyRequest):
+    session_id = data.session_id.strip()
+    msg_text = data.message.strip()
+    if not msg_text:
+        raise HTTPException(status_code=400, detail="Сообщение не может быть пустым")
+
+    saved_msg = await db.save_support_message(
+        session_id=session_id,
+        sender="support",
+        message=msg_text,
+        client_name=data.manager_name or "Консьерж MODEVA"
+    )
+    await broadcast_support_message(saved_msg)
+    return {"status": "ok", "message": saved_msg}
+
+
+@app.get("/api/admin/promos")
+async def api_admin_promos():
+    promos = await db.get_all_promos()
+    return {"status": "ok", "promos": promos}
+
+
+@app.post("/api/admin/promos")
+async def api_admin_create_promo(data: AdminPromoCreateRequest):
+    res = await db.create_or_update_promo(data.promo_code, data.discount_percent)
+    return {"status": "ok", "promo": res}
+
+
+@app.delete("/api/admin/promos/{code}")
+async def api_admin_delete_promo(code: str):
+    await db.delete_promo(code)
+    return {"status": "ok"}
+
+
+@app.get("/api/admin/settings")
+async def api_admin_get_settings():
+    settings = await db.get_site_settings()
+    bc = await db.get_bot_setting("broadcast_announcement", "")
+    settings["broadcast_announcement"] = bc
+    return {"status": "ok", "settings": settings}
+
+
+@app.post("/api/admin/settings")
+async def api_admin_save_settings(data: AdminSettingsUpdateRequest):
+    if data.site_name:
+        await db.set_bot_setting("site_name", data.site_name.strip())
+    if data.site_hero_title:
+        await db.set_bot_setting("site_hero_title", data.site_hero_title.strip())
+    if data.site_hero_subtitle:
+        await db.set_bot_setting("site_hero_subtitle", data.site_hero_subtitle.strip())
+    if data.broadcast_message is not None:
+        await db.set_bot_setting("broadcast_announcement", data.broadcast_message.strip())
+    return {"status": "ok"}

@@ -14,5 +14,3 @@ services:
     env:
       - key: PYTHONIOENCODING
         value: utf-8
-      - key: BOT_API_URL
-        value: ""

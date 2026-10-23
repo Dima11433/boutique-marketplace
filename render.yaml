@@ -1,20 +1,5 @@
 services:
-  # 1. Telegram Worker Bot (Free Web Service on Render)
-  - type: web
-    name: modeva-bot
-    env: python
-    plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: python bot.py
-    envVars:
-      - key: PYTHONIOENCODING
-        value: utf-8
-      - key: BOT_TOKEN
-        sync: false
-      - key: LOG_CHAT_ID
-        value: -1004495225020
-
-  # 2. MODEVA Luxury Marketplace (Free Web Service)
+  # MODEVA Luxury Marketplace (Free Web Service)
   - type: web
     name: modeva-store
     env: python
@@ -24,8 +9,3 @@ services:
     envVars:
       - key: PYTHONIOENCODING
         value: utf-8
-      - key: BOT_API_URL
-        fromService:
-          type: web
-          name: modeva-bot
-          property: host

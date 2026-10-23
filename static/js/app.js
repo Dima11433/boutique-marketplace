@@ -4,10 +4,10 @@ let currentSort = "popular";
 let searchQuery = "";
 let allProducts = [];
 let activeProduct = null;
-let activePromo = localStorage.getItem("mirelle_promo") || window.INITIAL_PROMO || "";
-let activeDiscount = parseInt(localStorage.getItem("mirelle_discount") || window.INITIAL_DISCOUNT || "0");
-let favorites = JSON.parse(localStorage.getItem("mirelle_favs") || "[]");
-let currentUser = JSON.parse(localStorage.getItem("mirelle_user") || "null");
+let activePromo = localStorage.getItem("modeva_promo") || localStorage.getItem("mirelle_promo") || window.INITIAL_PROMO || "";
+let activeDiscount = parseInt(localStorage.getItem("modeva_discount") || localStorage.getItem("mirelle_discount") || window.INITIAL_DISCOUNT || "0");
+let favorites = JSON.parse(localStorage.getItem("modeva_favs") || localStorage.getItem("mirelle_favs") || "[]");
+let currentUser = JSON.parse(localStorage.getItem("modeva_user") || localStorage.getItem("mirelle_user") || "null");
 
 document.addEventListener("DOMContentLoaded", () => {
     // Check URL params for ref / promo
@@ -396,6 +396,7 @@ async function submitRegister(e) {
         const data = await res.json().catch(() => ({}));
         if (res.ok && data.status === "ok") {
             currentUser = data.client;
+            localStorage.setItem("modeva_user", JSON.stringify(currentUser));
             localStorage.setItem("mirelle_user", JSON.stringify(currentUser));
             if (promo) {
                 await verifyAndSetPromo(promo);
@@ -417,10 +418,32 @@ async function submitRegister(e) {
     }
 }
 
-function submitLogin(e) {
+async function submitLogin(e) {
     e.preventDefault();
     const login = document.getElementById("loginInput").value.trim();
+    const passInput = e.target.querySelector("input[type=password]");
+    const pass = passInput ? passInput.value : "";
+
+    try {
+        const res = await fetch("/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ login: login, password: pass })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.status === "ok") {
+            currentUser = data.client;
+            localStorage.setItem("modeva_user", JSON.stringify(currentUser));
+            localStorage.setItem("mirelle_user", JSON.stringify(currentUser));
+            updateUserUI();
+            closeModal("loginModal");
+            alert(`С возвращением в MODEVA, ${currentUser.name}!`);
+            return;
+        }
+    } catch (err) {}
+
     currentUser = { name: login.split("@")[0] || "Клиент", phone: login };
+    localStorage.setItem("modeva_user", JSON.stringify(currentUser));
     localStorage.setItem("mirelle_user", JSON.stringify(currentUser));
     updateUserUI();
     closeModal("loginModal");
@@ -428,6 +451,7 @@ function submitLogin(e) {
 
 function logoutUser() {
     currentUser = null;
+    localStorage.removeItem("modeva_user");
     localStorage.removeItem("mirelle_user");
     updateUserUI();
 }

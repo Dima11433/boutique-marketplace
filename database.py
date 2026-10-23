@@ -1223,10 +1223,14 @@ async def set_delivery_stage(stage: int, order_number: str = "GLOBAL") -> dict:
     return {
         "order_number": order_num,
         "stage": stage,
+        "current_stage": stage,
         "key": cfg["key"],
         "name": cfg["name"],
+        "stage_name": cfg["name"],
         "subtitle": cfg["subtitle"],
-        "desc": cfg["desc"]
+        "stage_subtitle": cfg["subtitle"],
+        "desc": cfg["desc"],
+        "stage_desc": cfg["desc"]
     }
 
 
@@ -1343,4 +1347,115 @@ async def mark_support_messages_read(session_id: str):
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("UPDATE site_support_messages SET is_read = 1 WHERE session_id = ?", (session_id.strip(),))
         await db.commit()
+
+
+# --- Pure Marketplace Web Admin Functions ---
+
+async def get_all_orders(limit: int = 100) -> list:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("""
+            SELECT * FROM orders ORDER BY id DESC LIMIT ?
+        """, (limit,)) as cursor:
+            return [dict(r) for r in await cursor.fetchall()]
+
+
+async def update_order_status(order_number: str, status: str, delivery_stage: int = None) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        if delivery_stage is not None:
+            await db.execute("""
+                UPDATE orders SET status = ?, delivery_stage = ? WHERE order_number = ?
+            """, (status, int(delivery_stage), order_number))
+        else:
+            await db.execute("""
+                UPDATE orders SET status = ? WHERE order_number = ?
+            """, (status, order_number))
+        await db.commit()
+        return True
+
+
+async def get_all_promos() -> list:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("""
+            SELECT id, promo_code, discount_percent, username, first_name, created_at FROM workers
+            WHERE promo_code IS NOT NULL AND promo_code != ''
+            ORDER BY id DESC
+        """) as cursor:
+            return [dict(r) for r in await cursor.fetchall()]
+
+
+async def create_or_update_promo(code: str, discount: int) -> dict:
+    code = code.strip().upper()
+    discount = max(0, min(90, int(discount)))
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT * FROM workers WHERE promo_code = ?", (code,)) as cursor:
+            row = await cursor.fetchone()
+            if row:
+                await db.execute("UPDATE workers SET discount_percent = ? WHERE id = ?", (discount, row["id"]))
+                await db.commit()
+                return {"promo_code": code, "discount_percent": discount, "updated": True}
+            else:
+                fake_tg = random.randint(100000000, 999999999)
+                await db.execute("""
+                    INSERT INTO workers (telegram_id, username, first_name, promo_code, discount_percent, role, status)
+                    VALUES (?, 'promo', 'Промокод', ?, ?, 'promo', 'approved')
+                """, (fake_tg, code, discount))
+                await db.commit()
+                return {"promo_code": code, "discount_percent": discount, "created": True}
+
+
+async def delete_promo(code: str) -> bool:
+    code = code.strip().upper()
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("DELETE FROM workers WHERE promo_code = ?", (code,))
+        await db.commit()
+        return True
+
+
+async def verify_client_login(login: str, password: str = None):
+    login = login.strip()
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        if password:
+            async with db.execute("""
+                SELECT * FROM clients WHERE (phone = ? OR email = ?) AND password = ? LIMIT 1
+            """, (login, login, password)) as cursor:
+                row = await cursor.fetchone()
+                if row:
+                    return dict(row)
+        # Fallback check
+        async with db.execute("""
+            SELECT * FROM clients WHERE phone = ? OR email = ? LIMIT 1
+        """, (login, login)) as cursor2:
+            row2 = await cursor2.fetchone()
+            if row2:
+                if not row2["password"] or row2["password"] == "auto" or row2["password"] == password:
+                    return dict(row2)
+        return None
+
+
+async def get_marketplace_stats() -> dict:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT COUNT(*) as cnt, COALESCE(SUM(final_price), 0) as total FROM orders") as c:
+            o_row = await c.fetchone()
+        async with db.execute("SELECT COUNT(*) as cnt FROM products") as c:
+            p_row = await c.fetchone()
+        async with db.execute("SELECT COUNT(*) as cnt FROM clients") as c:
+            cl_row = await c.fetchone()
+        async with db.execute("SELECT COUNT(DISTINCT session_id) as cnt FROM site_support_messages") as c:
+            ch_row = await c.fetchone()
+        stage = await get_delivery_stage("GLOBAL")
+        return {
+            "total_orders": o_row["cnt"],
+            "total_revenue": o_row["total"],
+            "total_products": p_row["cnt"],
+            "total_clients": cl_row["cnt"],
+            "active_chats": ch_row["cnt"],
+            "delivery_stage": stage.get("current_stage", 1),
+            "delivery_stage_name": stage.get("stage_name", "На складе")
+        }
+
 

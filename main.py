@@ -3,7 +3,6 @@ import logging
 import uvicorn
 import config
 from database import init_db
-from bot import dp, bot
 from web import app
 
 logging.basicConfig(
@@ -26,18 +25,12 @@ async def main():
     )
     server = uvicorn.Server(server_config)
 
-    logger.info(f"Starting Web Marketplace on http://localhost:{config.SERVER_PORT}")
-    logger.info("Starting Telegram Worker Bot...")
+    logger.info(f"Starting MODEVA Luxury Marketplace on http://localhost:{config.SERVER_PORT}")
 
     try:
-        await asyncio.gather(
-            server.serve(),
-            dp.start_polling(bot)
-        )
+        await server.serve()
     except asyncio.CancelledError:
-        logger.info("Shutting down services...")
-    finally:
-        await bot.session.close()
+        logger.info("Shutting down marketplace server...")
 
 if __name__ == "__main__":
     try:
