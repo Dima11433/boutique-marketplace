@@ -253,136 +253,138 @@
         </div>
     </div>
 
-    <!-- ✦ UNIFIED LUXURY SPLIT AUTH MODAL (LOGIN & SIGN UP) ✦ -->
+    <!-- ✦ UNIFIED LUXURY SPLIT AUTH MODAL (EXACT MATCH TO REFERENCE SCREENSHOT) ✦ -->
     <div class="modal" id="authModal">
         <div class="modal-dialog auth-split-dialog">
-            <button class="auth-close-btn" onclick="closeModal('authModal')">&times;</button>
+            <button class="auth-close-btn" onclick="closeModal('authModal')" title="Закрыть">&times;</button>
             
             <!-- Left Pane: Interactive Form with Pill Switcher -->
             <div class="auth-dialog-left">
                 
-                <!-- Pill Toggle Switcher (Matching Screenshot) -->
+                <!-- Pill Toggle Switcher (Exact Match to Screenshot) -->
                 <div class="auth-pill-toggle">
                     <button type="button" class="auth-pill-btn active" id="authPillLogin" onclick="switchAuthTab('login')">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
                             <polyline points="10 17 15 12 10 7"></polyline>
                             <line x1="15" y1="12" x2="3" y2="12"></line>
                         </svg>
-                        <span>Вход</span>
+                        <span>Login</span>
                     </button>
                     <button type="button" class="auth-pill-btn" id="authPillSignup" onclick="switchAuthTab('signup')">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                         </svg>
-                        <span>Регистрация</span>
+                        <span>Sign Up</span>
                     </button>
                 </div>
 
-                <!-- 1. LOGIN FORM SECTION -->
-                <div id="authLoginSection">
-                    <h2 class="auth-form-title">Добро пожаловать!</h2>
-                    <p class="auth-form-subtitle">Введите ваши данные для входа в кабинет покупателя.</p>
+                <!-- 1. LOGIN FORM SECTION (Exact Match to Screenshot 2) -->
+                <div id="authLoginSection" class="auth-view-active">
+                    <h2 class="auth-form-title">Welcome!</h2>
+                    <p class="auth-form-subtitle">Please enter your details to login.</p>
                     
                     <form onsubmit="submitLogin(event)">
                         <div class="auth-input-group">
-                            <div class="auth-label-row">
-                                <label class="auth-label">Email адрес или телефон</label>
-                            </div>
-                            <input type="text" id="loginInput" class="auth-input" required placeholder="Введите ваш email или номер телефона">
+                            <label class="auth-label" for="loginInput">Email address</label>
+                            <input type="text" id="loginInput" class="auth-input" required placeholder="Enter your email address">
                         </div>
 
                         <div class="auth-input-group">
                             <div class="auth-label-row">
-                                <label class="auth-label">Пароль</label>
-                                <a href="#" class="auth-forgot-link" onclick="openModevaSupport('Здравствуйте! Подскажите, как восстановить доступ к личному кабинету.'); return false;">Забыли пароль?</a>
+                                <label class="auth-label" for="loginPassInput">Password</label>
+                                <a href="#" class="auth-forgot-link" onclick="openModevaSupport('Здравствуйте! Подскажите, как восстановить доступ к личному кабинету.'); return false;">Forgot password?</a>
                             </div>
                             <div class="auth-input-wrapper">
-                                <input type="password" id="loginPassInput" class="auth-input" required placeholder="Введите ваш пароль">
-                                <button type="button" class="auth-eye-btn" onclick="togglePassVisibility('loginPassInput', this)" title="Показать/скрыть">👁</button>
+                                <input type="password" id="loginPassInput" class="auth-input" required placeholder="Enter your password">
+                                <button type="button" class="auth-eye-btn" onclick="togglePassVisibility('loginPassInput', this)" title="Show/Hide Password">
+                                    <svg class="eye-off-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </svg>
+                                    <svg class="eye-on-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                </button>
                             </div>
                         </div>
 
-                        <button type="submit" class="auth-submit-btn">Войти в аккаунт</button>
+                        <button type="submit" class="auth-submit-btn">Log In</button>
 
                         <div class="auth-or-divider">
-                            <span>ИЛИ</span>
+                            <span>OR</span>
                         </div>
 
-                        <button type="button" class="auth-guest-btn" onclick="quickGuestLogin()">Продолжить как гость</button>
+                        <button type="button" class="auth-guest-btn" onclick="quickGuestLogin()">Продолжить как гость (Быстрый вход)</button>
                     </form>
                 </div>
 
-                <!-- 2. SIGN UP / REGISTER FORM SECTION -->
+                <!-- 2. SIGN UP / REGISTER FORM SECTION (Exact Match to Screenshot 1) -->
                 <div id="authSignupSection" style="display: none;">
-                    <h2 class="auth-form-title">Создать аккаунт</h2>
-                    <p class="auth-form-subtitle">Присоединяйтесь к закрытому клубу MODEVA сегодня.</p>
+                    <h2 class="auth-form-title">Create Account</h2>
+                    <p class="auth-form-subtitle">Join us today and get started.</p>
                     
                     <form id="registerForm" onsubmit="submitRegister(event)">
                         <div class="auth-input-group">
-                            <div class="auth-label-row">
-                                <label class="auth-label">Ваше имя</label>
-                            </div>
-                            <input type="text" id="regName" class="auth-input" required placeholder="Например: Александр">
+                            <label class="auth-label" for="regName">First Name</label>
+                            <input type="text" id="regName" class="auth-input" required placeholder="John">
                         </div>
 
                         <div class="auth-input-group">
-                            <div class="auth-label-row">
-                                <label class="auth-label">Номер телефона</label>
-                            </div>
-                            <input type="tel" id="regPhone" class="auth-input" required placeholder="+7 (999) 000-00-00">
+                            <label class="auth-label" for="regEmail">Email address</label>
+                            <input type="text" id="regEmail" class="auth-input" required placeholder="Enter your email address">
                         </div>
 
                         <div class="auth-input-group">
-                            <div class="auth-label-row">
-                                <label class="auth-label">Электронная почта</label>
-                            </div>
-                            <input type="email" id="regEmail" class="auth-input" placeholder="example@mail.ru">
-                        </div>
-
-                        <div class="auth-input-group">
-                            <div class="auth-label-row">
-                                <label class="auth-label">Пароль</label>
-                                <span class="auth-label-hint">Минимум 6 знаков</span>
-                            </div>
+                            <label class="auth-label" for="regPassword">Password</label>
                             <div class="auth-input-wrapper">
-                                <input type="password" id="regPassword" class="auth-input" required minlength="6" placeholder="Придумайте надежный пароль">
-                                <button type="button" class="auth-eye-btn" onclick="togglePassVisibility('regPassword', this)" title="Показать/скрыть">👁</button>
+                                <input type="password" id="regPassword" class="auth-input" required minlength="6" placeholder="Create a password">
+                                <button type="button" class="auth-eye-btn" onclick="togglePassVisibility('regPassword', this)" title="Show/Hide Password">
+                                    <svg class="eye-off-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </svg>
+                                    <svg class="eye-on-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                </button>
                             </div>
                         </div>
 
                         <div class="auth-input-group">
                             <div class="auth-label-row">
-                                <label class="auth-label">Реферальный промокод (если есть)</label>
-                                <span class="auth-promo-badge">✦ Скидка до 20%</span>
+                                <label class="auth-label" for="regPromo">Referral Promo Code</label>
+                                <span class="auth-promo-badge">✦ Up to 20% Off</span>
                             </div>
-                            <input type="text" id="regPromo" class="auth-input" placeholder="Например: VIP20 или MODEVA">
+                            <input type="text" id="regPromo" class="auth-input" placeholder="e.g. VIP20 (optional)">
                         </div>
 
-                        <button type="submit" class="auth-submit-btn">Создать аккаунт</button>
+                        <button type="submit" class="auth-submit-btn">Create Account</button>
                     </form>
                 </div>
 
             </div>
 
-            <!-- Right Pane: Luxury Aesthetic Card (Matching Screenshot) -->
+            <!-- Right Pane: Luxury Aesthetic Card (Exact Match to Screenshot) -->
             <div class="auth-dialog-right">
                 <div class="auth-visual-card">
                     <div class="auth-visual-overlay"></div>
                     <div class="auth-visual-top-badge">
-                        <span>✦</span> MODEVA PRIVILEGE
+                        <span>✦</span> MODEVA ATELIER
                     </div>
 
                     <!-- Floating Frosted Testimonial Card (Exact Match to Screenshot) -->
                     <div class="auth-testimonial-box">
                         <div class="auth-stars">★★★★★</div>
-                        <p class="auth-quote">«Интерфейс невероятно удобный. Получил заказ в тот же день с полной проверкой подлинности и сертификатом MODEVA.»</p>
+                        <p class="auth-quote">"The user interface is incredibly intuitive. I found exactly what I needed in seconds, with seamless authentic certification."</p>
                         <div class="auth-author-row">
-                            <div class="auth-avatar">АВ</div>
+                            <div class="auth-avatar">AV</div>
                             <div>
-                                <div class="auth-author-name">Александр В.</div>
-                                <div class="auth-author-role">Постоянный резидент MODEVA Black</div>
+                                <div class="auth-author-name">Alexandre V.</div>
+                                <div class="auth-author-role">MODEVA Resident Member</div>
                             </div>
                         </div>
                     </div>

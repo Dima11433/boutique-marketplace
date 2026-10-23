@@ -768,12 +768,22 @@ function switchAuthTab(mode) {
     if (mode === 'signup') {
         if (pillSignup) pillSignup.classList.add('active');
         if (pillLogin) pillLogin.classList.remove('active');
-        if (secSignup) secSignup.style.display = 'block';
+        if (secSignup) {
+            secSignup.style.display = 'block';
+            secSignup.classList.remove('auth-view-active');
+            void secSignup.offsetWidth;
+            secSignup.classList.add('auth-view-active');
+        }
         if (secLogin) secLogin.style.display = 'none';
     } else {
         if (pillLogin) pillLogin.classList.add('active');
         if (pillSignup) pillSignup.classList.remove('active');
-        if (secLogin) secLogin.style.display = 'block';
+        if (secLogin) {
+            secLogin.style.display = 'block';
+            secLogin.classList.remove('auth-view-active');
+            void secLogin.offsetWidth;
+            secLogin.classList.add('auth-view-active');
+        }
         if (secSignup) secSignup.style.display = 'none';
     }
 }
@@ -781,12 +791,13 @@ function switchAuthTab(mode) {
 function togglePassVisibility(inputId, btn) {
     const input = document.getElementById(inputId);
     if (!input) return;
-    if (input.type === 'password') {
-        input.type = 'text';
-        btn.textContent = '🙈';
-    } else {
-        input.type = 'password';
-        btn.textContent = '👁';
+    const isPass = input.type === 'password';
+    input.type = isPass ? 'text' : 'password';
+    const offSvg = btn.querySelector('.eye-off-svg');
+    const onSvg = btn.querySelector('.eye-on-svg');
+    if (offSvg && onSvg) {
+        offSvg.style.display = isPass ? 'none' : 'block';
+        onSvg.style.display = isPass ? 'block' : 'none';
     }
 }
 
