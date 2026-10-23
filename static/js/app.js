@@ -589,6 +589,7 @@ async function submitRegister(e) {
                 await verifyAndSetPromo(promo);
             }
             updateUserUI();
+            closeModal("authModal");
             closeModal("registerModal");
             alert(`Добро пожаловать в MODEVA, ${name}!`);
         } else {
@@ -623,6 +624,7 @@ async function submitLogin(e) {
             localStorage.setItem("modeva_user", JSON.stringify(currentUser));
             localStorage.setItem("mirelle_user", JSON.stringify(currentUser));
             updateUserUI();
+            closeModal("authModal");
             closeModal("loginModal");
             alert(`С возвращением в MODEVA, ${currentUser.name}!`);
             return;
@@ -633,6 +635,7 @@ async function submitLogin(e) {
     localStorage.setItem("modeva_user", JSON.stringify(currentUser));
     localStorage.setItem("mirelle_user", JSON.stringify(currentUser));
     updateUserUI();
+    closeModal("authModal");
     closeModal("loginModal");
 }
 
@@ -749,9 +752,64 @@ function closeBroadcast() {
     if (el) el.style.display = "none";
 }
 
+// --- Unified Auth Modal Logic (Switch between Login and Signup) ---
+function openAuthModal(mode = 'login') {
+    switchAuthTab(mode);
+    const el = document.getElementById('authModal');
+    if (el) el.classList.add("show");
+}
+
+function switchAuthTab(mode) {
+    const pillLogin = document.getElementById('authPillLogin');
+    const pillSignup = document.getElementById('authPillSignup');
+    const secLogin = document.getElementById('authLoginSection');
+    const secSignup = document.getElementById('authSignupSection');
+
+    if (mode === 'signup') {
+        if (pillSignup) pillSignup.classList.add('active');
+        if (pillLogin) pillLogin.classList.remove('active');
+        if (secSignup) secSignup.style.display = 'block';
+        if (secLogin) secLogin.style.display = 'none';
+    } else {
+        if (pillLogin) pillLogin.classList.add('active');
+        if (pillSignup) pillSignup.classList.remove('active');
+        if (secLogin) secLogin.style.display = 'block';
+        if (secSignup) secSignup.style.display = 'none';
+    }
+}
+
+function togglePassVisibility(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+    } else {
+        input.type = 'password';
+        btn.textContent = '👁';
+    }
+}
+
+function quickGuestLogin() {
+    currentUser = { name: "Гость", phone: "+7 (999) 000-00-00", is_guest: true };
+    localStorage.setItem("modeva_user", JSON.stringify(currentUser));
+    localStorage.setItem("mirelle_user", JSON.stringify(currentUser));
+    updateUserUI();
+    closeModal("authModal");
+    alert("Вы вошли как гость! Теперь вам доступны все функции покупок.");
+}
+
 // --- Modal Helpers ---
 
 function openModal(id) {
+    if (id === 'loginModal') {
+        openAuthModal('login');
+        return;
+    }
+    if (id === 'registerModal') {
+        openAuthModal('signup');
+        return;
+    }
     const el = document.getElementById(id);
     if (el) el.classList.add("show");
 }

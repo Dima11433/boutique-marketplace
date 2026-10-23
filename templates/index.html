@@ -61,8 +61,8 @@
                 </button>
 
                 <div id="authButtons" class="auth-buttons">
-                    <button class="btn btn-light" onclick="openModal('loginModal')">Войти</button>
-                    <button class="btn btn-dark" onclick="openModal('registerModal')">Создать аккаунт</button>
+                    <button class="btn btn-light" onclick="openAuthModal('login')">Войти</button>
+                    <button class="btn btn-dark" onclick="openAuthModal('signup')">Создать аккаунт</button>
                 </div>
 
                 <div id="userProfile" class="user-profile" style="display: none;">
@@ -261,58 +261,142 @@
         </div>
     </div>
 
-    <!-- MODAL: Register -->
-    <div class="modal" id="registerModal">
-        <div class="modal-dialog">
-            <button class="modal-close" onclick="closeModal('registerModal')">&times;</button>
-            <div class="modal-body">
-                <h3 class="modal-title">Создать аккаунт</h3>
-                <p class="modal-subtitle">Получите доступ к закрытым коллекциям и истории покупок</p>
-                <form id="registerForm" onsubmit="submitRegister(event)">
-                    <div class="form-group">
-                        <label>Имя</label>
-                        <input type="text" id="regName" required placeholder="Ваше имя">
-                    </div>
-                    <div class="form-group">
-                        <label>Номер телефона</label>
-                        <input type="tel" id="regPhone" required placeholder="+7 (999) 000-00-00">
-                    </div>
-                    <div class="form-group">
-                        <label>Электронная почта</label>
-                        <input type="email" id="regEmail" placeholder="example@mail.ru">
-                    </div>
-                    <div class="form-group">
-                        <label>Пароль</label>
-                        <input type="password" id="regPassword" required placeholder="••••••••">
-                    </div>
-                    <div class="form-group promo-group-styled">
-                        <label>Реферальный промокод (если есть) <span class="promo-gold-tag">💎 Скидка до 30%</span></label>
-                        <input type="text" id="regPromo" placeholder="Например: MODEVA-VIP">
-                    </div>
-                    <button type="submit" class="btn btn-dark btn-block">Зарегистрироваться</button>
-                </form>
-            </div>
-        </div>
-    </div>
+    <!-- ✦ UNIFIED LUXURY SPLIT AUTH MODAL (LOGIN & SIGN UP) ✦ -->
+    <div class="modal" id="authModal">
+        <div class="modal-dialog auth-split-dialog">
+            <button class="auth-close-btn" onclick="closeModal('authModal')">&times;</button>
+            
+            <!-- Left Pane: Interactive Form with Pill Switcher -->
+            <div class="auth-dialog-left">
+                
+                <!-- Pill Toggle Switcher (Matching Screenshot) -->
+                <div class="auth-pill-toggle">
+                    <button type="button" class="auth-pill-btn active" id="authPillLogin" onclick="switchAuthTab('login')">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                            <polyline points="10 17 15 12 10 7"></polyline>
+                            <line x1="15" y1="12" x2="3" y2="12"></line>
+                        </svg>
+                        <span>Вход</span>
+                    </button>
+                    <button type="button" class="auth-pill-btn" id="authPillSignup" onclick="switchAuthTab('signup')">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                        <span>Регистрация</span>
+                    </button>
+                </div>
 
-    <!-- MODAL: Login -->
-    <div class="modal" id="loginModal">
-        <div class="modal-dialog">
-            <button class="modal-close" onclick="closeModal('loginModal')">&times;</button>
-            <div class="modal-body">
-                <h3 class="modal-title">Вход в личный кабинет</h3>
-                <form onsubmit="submitLogin(event)">
-                    <div class="form-group">
-                        <label>Телефон или Email</label>
-                        <input type="text" id="loginInput" required placeholder="+7 (999) 000-00-00">
-                    </div>
-                    <div class="form-group">
-                        <label>Пароль</label>
-                        <input type="password" required placeholder="••••••••">
-                    </div>
-                    <button type="submit" class="btn btn-dark btn-block">Войти</button>
-                </form>
+                <!-- 1. LOGIN FORM SECTION -->
+                <div id="authLoginSection">
+                    <h2 class="auth-form-title">Добро пожаловать!</h2>
+                    <p class="auth-form-subtitle">Введите ваши данные для входа в кабинет покупателя.</p>
+                    
+                    <form onsubmit="submitLogin(event)">
+                        <div class="auth-input-group">
+                            <div class="auth-label-row">
+                                <label class="auth-label">Email адрес или телефон</label>
+                            </div>
+                            <input type="text" id="loginInput" class="auth-input" required placeholder="Введите ваш email или номер телефона">
+                        </div>
+
+                        <div class="auth-input-group">
+                            <div class="auth-label-row">
+                                <label class="auth-label">Пароль</label>
+                                <a href="#" class="auth-forgot-link" onclick="openModevaSupport('Здравствуйте! Подскажите, как восстановить доступ к личному кабинету.'); return false;">Забыли пароль?</a>
+                            </div>
+                            <div class="auth-input-wrapper">
+                                <input type="password" id="loginPassInput" class="auth-input" required placeholder="Введите ваш пароль">
+                                <button type="button" class="auth-eye-btn" onclick="togglePassVisibility('loginPassInput', this)" title="Показать/скрыть">👁</button>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="auth-submit-btn">Войти в аккаунт</button>
+
+                        <div class="auth-or-divider">
+                            <span>ИЛИ</span>
+                        </div>
+
+                        <button type="button" class="auth-guest-btn" onclick="quickGuestLogin()">Продолжить как гость</button>
+                    </form>
+                </div>
+
+                <!-- 2. SIGN UP / REGISTER FORM SECTION -->
+                <div id="authSignupSection" style="display: none;">
+                    <h2 class="auth-form-title">Создать аккаунт</h2>
+                    <p class="auth-form-subtitle">Присоединяйтесь к закрытому клубу MODEVA сегодня.</p>
+                    
+                    <form id="registerForm" onsubmit="submitRegister(event)">
+                        <div class="auth-input-group">
+                            <div class="auth-label-row">
+                                <label class="auth-label">Ваше имя</label>
+                            </div>
+                            <input type="text" id="regName" class="auth-input" required placeholder="Например: Александр">
+                        </div>
+
+                        <div class="auth-input-group">
+                            <div class="auth-label-row">
+                                <label class="auth-label">Номер телефона</label>
+                            </div>
+                            <input type="tel" id="regPhone" class="auth-input" required placeholder="+7 (999) 000-00-00">
+                        </div>
+
+                        <div class="auth-input-group">
+                            <div class="auth-label-row">
+                                <label class="auth-label">Электронная почта</label>
+                            </div>
+                            <input type="email" id="regEmail" class="auth-input" placeholder="example@mail.ru">
+                        </div>
+
+                        <div class="auth-input-group">
+                            <div class="auth-label-row">
+                                <label class="auth-label">Пароль</label>
+                                <span class="auth-label-hint">Минимум 6 знаков</span>
+                            </div>
+                            <div class="auth-input-wrapper">
+                                <input type="password" id="regPassword" class="auth-input" required minlength="6" placeholder="Придумайте надежный пароль">
+                                <button type="button" class="auth-eye-btn" onclick="togglePassVisibility('regPassword', this)" title="Показать/скрыть">👁</button>
+                            </div>
+                        </div>
+
+                        <div class="auth-input-group">
+                            <div class="auth-label-row">
+                                <label class="auth-label">Реферальный промокод (если есть)</label>
+                                <span class="auth-promo-badge">✦ Скидка до 20%</span>
+                            </div>
+                            <input type="text" id="regPromo" class="auth-input" placeholder="Например: VIP20 или MODEVA">
+                        </div>
+
+                        <button type="submit" class="auth-submit-btn">Создать аккаунт</button>
+                    </form>
+                </div>
+
             </div>
+
+            <!-- Right Pane: Luxury Aesthetic Card (Matching Screenshot) -->
+            <div class="auth-dialog-right">
+                <div class="auth-visual-card">
+                    <div class="auth-visual-overlay"></div>
+                    <div class="auth-visual-top-badge">
+                        <span>✦</span> MODEVA PRIVILEGE
+                    </div>
+
+                    <!-- Floating Frosted Testimonial Card (Exact Match to Screenshot) -->
+                    <div class="auth-testimonial-box">
+                        <div class="auth-stars">★★★★★</div>
+                        <p class="auth-quote">«Интерфейс невероятно удобный. Получил заказ в тот же день с полной проверкой подлинности и сертификатом MODEVA.»</p>
+                        <div class="auth-author-row">
+                            <div class="auth-avatar">АВ</div>
+                            <div>
+                                <div class="auth-author-name">Александр В.</div>
+                                <div class="auth-author-role">Постоянный резидент MODEVA Black</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
