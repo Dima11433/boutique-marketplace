@@ -25,7 +25,7 @@
    - **Instance Type:** `Free`
 6. В разделе **Environment Variables** добавьте переменные:
    - `PYTHONIOENCODING` = `utf-8`
-   - `BOT_TOKEN` = `8848109793:AAFXloV-AG_ZH-dq2EDs6UCL3Rnabt0gyms`
+   - `BOT_TOKEN` = `ВАШ_ТОКЕН_БОТА`
    - `LOG_CHAT_ID` = `-1004495225020`
 7. Нажмите **«Deploy Web Service»**.
 8. Через 1–2 минуты Render выведет:

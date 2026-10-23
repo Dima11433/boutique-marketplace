@@ -1,6 +1,6 @@
 import os
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8848109793:AAFXloV-AG_ZH-dq2EDs6UCL3Rnabt0gyms")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 LOG_CHAT_ID = int(os.getenv("LOG_CHAT_ID", "-1004495225020"))
 
 ADMIN_IDS = [8391813279, 6667583896]
