@@ -290,84 +290,8 @@ async def init_db():
 
 
 async def seed_default_products():
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT COUNT(*) FROM products WHERE worker_id IS NULL") as cursor:
-            count = (await cursor.fetchone())[0]
-            if count > 0:
-                return
-
-        default_products = [
-            (
-                "Антрацитовый кожаный портфель Hermès Sac à Dépêches",
-                "Сумки",
-                250000.0,
-                "/static/images/p1_briefcase.png",
-                "Изысканный мужской портфель из зернистой кожи Togo антрацитового цвета. Фурнитура из палладия, идеальное состояние.",
-                "Идеальное"
-            ),
-            (
-                "Антрацитовый чемодан Louis Vuitton Horizon 55",
-                "Сумки",
-                150000.0,
-                "/static/images/p2_suitcase.png",
-                "Культовый чемодан на 4 колесах с монограммой Eclipse. Компактный ручной багаж премиум-класса с кодовым замком TSA.",
-                "Новое с биркой"
-            ),
-            (
-                "Бежевая кожаная сумка Chloé Marcie Small",
-                "Сумки",
-                31200.0,
-                "/static/images/p3_beigebag.png",
-                "Элегантная сумка через плечо из мягкой телячьей кожи песочно-бежевого оттенка. Золотистая фурнитура, классический силуэт.",
-                "Новое"
-            ),
-            (
-                "Бежевая куртка SAINT LAURENT Teddy Jacket",
-                "Одежда",
-                31400.0,
-                "/static/images/p4_jacket.png",
-                "Легендарная куртка бомбер в песочном цвете с контрастными кожаными вставками. 100% шерсть с шелковой подкладкой.",
-                "Новое с биркой"
-            ),
-            (
-                "Сумка Longchamp Le Pliage Heritage Cuir",
-                "Сумки",
-                45000.0,
-                "/static/images/p5_longchamp.png",
-                "Трапециевидная сумка из натуральной кожи тонкой выделки. В комплекте съемный плечевой ремень и пыльник.",
-                "Отличное"
-            ),
-            (
-                "Кожаная сумка Chanel Classic Double Flap Mini",
-                "Сумки",
-                380000.0,
-                "/static/images/p6_handbag.png",
-                "Черная стеганая кожа ягненка, фурнитура с 24-каратным золотым напылением. Аутентифицирована экспертами MODEVA.",
-                "Идеальное"
-            ),
-            (
-                "Сумка на плечо Prada Re-Edition 2005 Re-Nylon",
-                "Сумки",
-                125000.0,
-                "/static/images/p7_shoulderbag.png",
-                "Культовая нейлоновая сумка со съемным чехлом на ремне и металлической цепочкой. Серебристая фурнитура.",
-                "Новое"
-            ),
-            (
-                "Солнцезащитные очки Jacques Marie Mage Dealan",
-                "Аксессуары",
-                68000.0,
-                "/static/images/p8_sunglasses.png",
-                "Лимитированная серия ручной работы из ацетата премиум качества со вставками из драгоценных металлов.",
-                "Новое в коробке"
-            )
-        ]
-
-        await db.executemany("""
-            INSERT INTO products (title, category, price, image_url, description, condition, worker_id)
-            VALUES (?, ?, ?, ?, ?, ?, NULL)
-        """, default_products)
-        await db.commit()
+    # User requested all default products to be removed
+    return
 
 
 # --- Dynamic Settings ---

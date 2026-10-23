@@ -9,97 +9,8 @@ let activeDiscount = parseInt(localStorage.getItem("modeva_discount") || localSt
 let favorites = JSON.parse(localStorage.getItem("modeva_favs") || localStorage.getItem("mirelle_favs") || "[]");
 let currentUser = JSON.parse(localStorage.getItem("modeva_user") || localStorage.getItem("mirelle_user") || "null");
 
-// Static Fallback Data for GitHub Pages & Offline
-const STATIC_DEFAULT_PRODUCTS = [
-    {
-        id: 1,
-        title: "Антрацитовый кожаный портфель Hermès Sac à Dépêches",
-        category: "Сумки",
-        original_price: 250000.0,
-        final_price: 250000.0,
-        discount_percent: 0,
-        image_url: "static/images/p1_briefcase.png",
-        description: "Изысканный мужской портфель из зернистой кожи Togo антрацитового цвета. Фурнитура из палладия, идеальное состояние.",
-        condition: "Идеальное"
-    },
-    {
-        id: 2,
-        title: "Антрацитовый чемодан Louis Vuitton Horizon 55",
-        category: "Сумки",
-        original_price: 150000.0,
-        final_price: 150000.0,
-        discount_percent: 0,
-        image_url: "static/images/p2_suitcase.png",
-        description: "Культовый чемодан на 4 колесах с монограммой Eclipse. Компактный ручной багаж премиум-класса с кодовым замком TSA.",
-        condition: "Новое с биркой"
-    },
-    {
-        id: 3,
-        title: "Бежевая кожаная сумка Chloé Marcie Small",
-        category: "Сумки",
-        original_price: 31200.0,
-        final_price: 31200.0,
-        discount_percent: 0,
-        image_url: "static/images/p3_beigebag.png",
-        description: "Элегантная сумка через плечо из мягкой телячьей кожи песочно-бежевого оттенка. Золотистая фурнитура, классический силуэт.",
-        condition: "Новое"
-    },
-    {
-        id: 4,
-        title: "Бежевая куртка SAINT LAURENT Teddy Jacket",
-        category: "Одежда",
-        original_price: 31400.0,
-        final_price: 31400.0,
-        discount_percent: 0,
-        image_url: "static/images/p4_jacket.png",
-        description: "Легендарная куртка бомбер в песочном цвете с контрастными кожаными вставками. 100% шерсть с шелковой подкладкой.",
-        condition: "Новое с биркой"
-    },
-    {
-        id: 5,
-        title: "Сумка Longchamp Le Pliage Heritage Cuir",
-        category: "Сумки",
-        original_price: 45000.0,
-        final_price: 45000.0,
-        discount_percent: 0,
-        image_url: "static/images/p5_longchamp.png",
-        description: "Трапециевидная сумка из натуральной кожи тонкой выделки. В комплекте съемный плечевой ремень и пыльник.",
-        condition: "Отличное"
-    },
-    {
-        id: 6,
-        title: "Кожаная сумка Chanel Classic Double Flap Mini",
-        category: "Сумки",
-        original_price: 380000.0,
-        final_price: 380000.0,
-        discount_percent: 0,
-        image_url: "static/images/p6_handbag.png",
-        description: "Черная стеганая кожа ягненка, фурнитура с 24-каратным золотым напылением. Аутентифицирована экспертами MODEVA.",
-        condition: "Идеальное"
-    },
-    {
-        id: 7,
-        title: "Сумка на плечо Prada Re-Edition 2005 Re-Nylon",
-        category: "Сумки",
-        original_price: 125000.0,
-        final_price: 125000.0,
-        discount_percent: 0,
-        image_url: "static/images/p7_shoulderbag.png",
-        description: "Культовая нейлоновая сумка со съемным чехлом на ремне и металлической цепочкой. Серебристая фурнитура.",
-        condition: "Новое"
-    },
-    {
-        id: 8,
-        title: "Солнцезащитные очки Jacques Marie Mage Dealan",
-        category: "Аксессуары",
-        original_price: 68000.0,
-        final_price: 68000.0,
-        discount_percent: 0,
-        image_url: "static/images/p8_sunglasses.png",
-        description: "Лимитированная серия ручной работы из ацетата премиум качества со вставками из драгоценных металлов.",
-        condition: "Новое в коробке"
-    }
-];
+// Static Fallback Data for GitHub Pages & Offline (Empty by default per owner request; populated if added via Admin)
+const STATIC_DEFAULT_PRODUCTS = JSON.parse(localStorage.getItem("modeva_custom_products") || "[]");
 
 const STATIC_PROMOS = {
     "MODEVA": 15,
@@ -280,7 +191,13 @@ function renderProducts(products) {
     if (!grid) return;
 
     if (!products.length) {
-        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #a1a1aa;">По вашему запросу товары не найдены.</div>';
+        grid.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 70px 20px; background: #fafafa; border: 1px dashed #e4e4e7; border-radius: 20px; margin: 20px 0;">
+                <div style="font-size: 40px; margin-bottom: 12px;">✨</div>
+                <h3 style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 26px; font-weight: 600; color: #18181b; margin: 0 0 10px 0;">Каталог обновляется</h3>
+                <p style="font-size: 14px; max-width: 440px; margin: 0 auto; color: #71717a; line-height: 1.6;">В данный момент на витрине нет доступных товаров. Новые поступления появятся в ближайшее время.</p>
+            </div>
+        `;
         return;
     }
 

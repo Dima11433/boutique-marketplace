@@ -947,7 +947,14 @@
                     errEl.style.display = 'block';
                 }
             } catch (err) {
-                errEl.textContent = 'Ошибка авторизации. Проверьте соединение.';
+                // Static GitHub Pages fallback
+                if (pass === 'modeva2026' || pass === 'admin') {
+                    sessionStorage.setItem('modeva_admin_token', 'modeva_admin_authorized');
+                    document.getElementById('adminLockScreen').style.display = 'none';
+                    initAdminApp();
+                    return;
+                }
+                errEl.textContent = 'Ошибка авторизации. Проверьте пароль или соединение.';
                 errEl.style.display = 'block';
             }
         }
@@ -997,21 +1004,31 @@
         }
 
         async function refreshAdminData() {
+            let apiLoaded = false;
             try {
                 const res = await fetch('/api/admin/stats');
-                const data = await res.json();
-                if (data.status === 'ok') {
-                    const s = data.stats;
-                    document.getElementById('statRevenue').textContent = `${Math.round(s.total_revenue).toLocaleString('ru-RU')} ₽`;
-                    document.getElementById('statOrders').textContent = s.total_orders;
-                    document.getElementById('statProducts').textContent = s.total_products;
-                    document.getElementById('statClients').textContent = s.total_clients;
-                    if (document.getElementById('statDeliveryStage')) {
-                        document.getElementById('statDeliveryStage').textContent = s.delivery_stage_name;
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.status === 'ok') {
+                        apiLoaded = true;
+                        const s = data.stats;
+                        document.getElementById('statRevenue').textContent = `${Math.round(s.total_revenue).toLocaleString('ru-RU')} ₽`;
+                        document.getElementById('statOrders').textContent = s.total_orders;
+                        document.getElementById('statProducts').textContent = s.total_products;
+                        document.getElementById('statClients').textContent = s.total_clients;
+                        if (document.getElementById('statDeliveryStage')) {
+                            document.getElementById('statDeliveryStage').textContent = s.delivery_stage_name;
+                        }
+                        highlightStageUI(s.delivery_stage);
                     }
-                    highlightStageUI(s.delivery_stage);
                 }
             } catch(e) {}
+
+            if (!apiLoaded) {
+                const localProds = JSON.parse(localStorage.getItem('modeva_custom_products') || '[]');
+                const el = document.getElementById('statProducts');
+                if (el) el.textContent = localProds.length;
+            }
         }
 
         function highlightStageUI(stageNum) {
@@ -1133,26 +1150,38 @@
 
         // Products
         async function loadAdminProducts() {
+            let products = [];
+            let loaded = false;
             try {
                 const res = await fetch('/api/admin/products');
-                const data = await res.json();
-                const tbody = document.getElementById('productsTableBody');
-                if (!data.products || data.products.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: rgba(255,255,255,0.4);">Товаров нет.</td></tr>';
-                    return;
+                if (res.ok) {
+                    const data = await res.json();
+                    products = data.products || [];
+                    loaded = true;
                 }
-                tbody.innerHTML = data.products.map(p => `
-                    <tr>
-                        <td><img src="${p.image_url}" class="table-thumb" alt="${escapeHtml(p.title)}"></td>
-                        <td><strong>${escapeHtml(p.title)}</strong><div style="font-size: 11px; color: rgba(255,255,255,0.4);">${escapeHtml(p.description || '')}</div></td>
-                        <td>${escapeHtml(p.category)}</td>
-                        <td><strong style="color: var(--admin-gold);">${Math.round(p.price).toLocaleString('ru-RU')} ₽</strong></td>
-                        <td>
-                            <button class="btn-action-del" onclick="deleteProductAdmin(${p.id})">Удалить</button>
-                        </td>
-                    </tr>
-                `).join('');
             } catch(e) {}
+
+            if (!loaded) {
+                // Static GitHub Pages fallback
+                products = JSON.parse(localStorage.getItem('modeva_custom_products') || '[]');
+            }
+
+            const tbody = document.getElementById('productsTableBody');
+            if (!products.length) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: rgba(255,255,255,0.4); padding: 30px;">В каталоге пока нет товаров.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = products.map(p => `
+                <tr>
+                    <td><img src="${p.image_url}" class="table-thumb" alt="${escapeHtml(p.title)}" onerror="this.src='static/images/p1_briefcase.png'"></td>
+                    <td><strong>${escapeHtml(p.title)}</strong><div style="font-size: 11px; color: rgba(255,255,255,0.4);">${escapeHtml(p.description || '')}</div></td>
+                    <td>${escapeHtml(p.category)}</td>
+                    <td><strong style="color: var(--admin-gold);">${Math.round(p.price || p.final_price || 0).toLocaleString('ru-RU')} ₽</strong></td>
+                    <td>
+                        <button class="btn-action-del" onclick="deleteProductAdmin(${p.id})">Удалить</button>
+                    </td>
+                </tr>
+            `).join('');
         }
 
         function toggleAddProductForm() {
@@ -1165,9 +1194,10 @@
             const title = document.getElementById('newProdTitle').value.trim();
             const category = document.getElementById('newProdCategory').value;
             const price = parseFloat(document.getElementById('newProdPrice').value);
-            const image = document.getElementById('newProdImage').value.trim();
+            const image = document.getElementById('newProdImage').value.trim() || 'static/images/p1_briefcase.png';
             const desc = document.getElementById('newProdDesc').value.trim();
 
+            let savedViaApi = false;
             try {
                 const res = await fetch('/api/admin/products', {
                     method: 'POST',
@@ -1175,20 +1205,47 @@
                     body: JSON.stringify({ title, category, price, image_url: image, description: desc })
                 });
                 if (res.ok) {
-                    toggleAddProductForm();
-                    loadAdminProducts();
-                    refreshAdminData();
+                    savedViaApi = true;
                 }
             } catch(e) {}
+
+            if (!savedViaApi) {
+                // Save locally for GitHub Pages
+                const list = JSON.parse(localStorage.getItem('modeva_custom_products') || '[]');
+                const newProd = {
+                    id: Date.now(),
+                    title,
+                    category,
+                    original_price: price,
+                    final_price: price,
+                    price: price,
+                    discount_percent: 0,
+                    image_url: image,
+                    description: desc,
+                    condition: "Новое"
+                };
+                list.push(newProd);
+                localStorage.setItem('modeva_custom_products', JSON.stringify(list));
+            }
+
+            toggleAddProductForm();
+            e.target.reset();
+            loadAdminProducts();
+            refreshAdminData();
         }
 
         async function deleteProductAdmin(id) {
             if (!confirm('Вы уверены, что хотите удалить этот товар из витрины?')) return;
             try {
                 await fetch(`/api/admin/products/${id}`, { method: 'DELETE' });
-                loadAdminProducts();
-                refreshAdminData();
             } catch(e) {}
+
+            const list = JSON.parse(localStorage.getItem('modeva_custom_products') || '[]');
+            const updated = list.filter(p => p.id !== id);
+            localStorage.setItem('modeva_custom_products', JSON.stringify(updated));
+
+            loadAdminProducts();
+            refreshAdminData();
         }
 
         // Orders
