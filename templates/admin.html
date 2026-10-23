@@ -665,9 +665,6 @@
             <a href="/" target="_blank" class="admin-link-btn">
                 🌐 Открыть витрину
             </a>
-            <a href="/tracking" target="_blank" class="admin-link-btn">
-                🚚 3D-Трекинг
-            </a>
             <button onclick="handleAdminLogout()" class="admin-link-btn" style="cursor: pointer;">
                 🔒 Выйти
             </button>
@@ -699,115 +696,19 @@
                 <div class="stat-val" id="statClients">0</div>
                 <div class="stat-sub">Зарегистрировано</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Текущий 3D-этап</div>
-                <div class="stat-val" id="statDeliveryStage" style="font-size: 20px; color: #34d399;">На складе</div>
-                <div class="stat-sub">Синхронизировано LIVE</div>
-            </div>
         </div>
 
         <!-- Navigation Tabs -->
         <nav class="admin-tabs">
-            <button class="tab-btn active" onclick="switchAdminTab('tabDelivery')">🚚 3D-Доставка (Live трекинг)</button>
-            <button class="tab-btn" onclick="switchAdminTab('tabSupport')">💬 Онлайн-поддержка (Live-чаты)</button>
-            <button class="tab-btn" onclick="switchAdminTab('tabProducts')">📦 Товары и Каталог</button>
+            <button class="tab-btn active" onclick="switchAdminTab('tabProducts')">📦 Товары и Каталог</button>
             <button class="tab-btn" onclick="switchAdminTab('tabOrders')">🛍 Заказы покупателей</button>
+            <button class="tab-btn" onclick="switchAdminTab('tabSupport')">💬 Онлайн-поддержка (Live-чаты)</button>
             <button class="tab-btn" onclick="switchAdminTab('tabPromos')">🏷 Промокоды и Скидки</button>
             <button class="tab-btn" onclick="switchAdminTab('tabSettings')">⚙️ Настройки витрины</button>
         </nav>
 
-        <!-- TAB 1: 🚚 Управление 3D-доставкой -->
-        <section class="tab-content active" id="tabDelivery">
-            <div class="panel-card">
-                <div class="panel-title">
-                    <span>🚚 Управление интерактивным 3D-трекингом доставки</span>
-                    <a href="/tracking" target="_blank" class="admin-link-btn" style="font-size: 12px;">Проверить на сайте ➔</a>
-                </div>
-                <p class="panel-subtitle">
-                    Нажмите на любой из 4 этапов ниже: виртуальная 3D-камера и анимация на сайте моментально перелетят к выбранной локации через Socket.IO / WebSockets без перезагрузки!
-                </p>
-
-                <div class="stage-control-grid">
-                    <!-- Stage 1 -->
-                    <div class="stage-card" id="adminStage1" onclick="setDeliveryStageAdmin(1)">
-                        <div class="stage-live-tag">АКТИВЕН</div>
-                        <div class="stage-num-badge">1</div>
-                        <div class="stage-card-title">🏢 На складе</div>
-                        <p class="stage-card-sub">Комплектация, фирменная упаковка в коробку MODEVA, лазерная проверка подлинности и пломбировка.</p>
-                    </div>
-
-                    <!-- Stage 2 -->
-                    <div class="stage-card" id="adminStage2" onclick="setDeliveryStageAdmin(2)">
-                        <div class="stage-live-tag">АКТИВЕН</div>
-                        <div class="stage-num-badge">2</div>
-                        <div class="stage-card-title">📦 Погрузка</div>
-                        <p class="stage-card-sub">Перемещение по логистическому конвейеру и погрузка в курьерский спецтранспорт.</p>
-                    </div>
-
-                    <!-- Stage 3 -->
-                    <div class="stage-card" id="adminStage3" onclick="setDeliveryStageAdmin(3)">
-                        <div class="stage-live-tag">АКТИВЕН</div>
-                        <div class="stage-num-badge">3</div>
-                        <div class="stage-card-title">🛣 В пути</div>
-                        <p class="stage-card-sub">Движение экспресс-фургона по магистрали со спутниковым GPS-мониторингом.</p>
-                    </div>
-
-                    <!-- Stage 4 -->
-                    <div class="stage-card" id="adminStage4" onclick="setDeliveryStageAdmin(4)">
-                        <div class="stage-live-tag">АКТИВЕН</div>
-                        <div class="stage-num-badge">4</div>
-                        <div class="stage-card-title">📍 На месте</div>
-                        <p class="stage-card-sub">Прибытие во флагманский бутик / пункт выдачи. Заказ готов к выдаче клиенту.</p>
-                    </div>
-                </div>
-
-                <div style="background: rgba(255, 255, 255, 0.03); border: 1px dashed rgba(212, 175, 55, 0.3); border-radius: 12px; padding: 14px 20px; font-size: 13px; color: rgba(255, 255, 255, 0.7); display: flex; align-items: center; justify-content: space-between;">
-                    <span>⚡️ Изменение статуса применяется моментально для всех клиентов на сайте.</span>
-                    <button class="btn-gold-save" onclick="refreshAdminData()">🔄 Обновить статус</button>
-                </div>
-            </div>
-        </section>
-
-        <!-- TAB 2: 💬 Онлайн-поддержка (Live-чаты) -->
-        <section class="tab-content" id="tabSupport">
-            <div class="panel-card" style="padding: 20px;">
-                <div class="panel-title" style="padding: 8px 12px;">
-                    <span>💬 Консьерж-служба заботы (Диалоги с клиентами)</span>
-                    <button class="btn-gold-save" onclick="loadSupportChats()" style="font-size: 12px; padding: 6px 16px;">🔄 Обновить чаты</button>
-                </div>
-                <div class="support-split">
-                    <!-- Left: Sessions List -->
-                    <div class="support-sidebar" id="supportSessionsList">
-                        <div style="padding: 24px; text-align: center; color: rgba(255,255,255,0.4); font-size: 13px;">Загрузка диалогов...</div>
-                    </div>
-
-                    <!-- Right: Chat Messages Pane -->
-                    <div class="support-chat-pane">
-                        <div class="chat-pane-header">
-                            <div>
-                                <strong id="currentChatClientName">Выберите диалог слева</strong>
-                                <span id="currentChatSessionId" style="font-size: 11px; color: rgba(255,255,255,0.4); margin-left: 8px;"></span>
-                            </div>
-                            <div id="currentChatPhone" style="font-size: 12px; color: var(--admin-gold);"></div>
-                        </div>
-
-                        <div class="chat-pane-messages" id="supportMessagesContainer">
-                            <div style="text-align: center; margin: auto; color: rgba(255,255,255,0.4); font-size: 13px;">
-                                Нажмите на любой чат из списка слева для просмотра сообщений и ответа покупателю.
-                            </div>
-                        </div>
-
-                        <form class="chat-pane-input-bar" onsubmit="sendSupportReply(event)">
-                            <textarea id="replyTextInput" class="chat-input" rows="2" placeholder="Напишите ответ покупателю как Консьерж MODEVA..."></textarea>
-                            <button type="submit" class="chat-send-btn">Отправить</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- TAB 3: 📦 Товары и Каталог -->
-        <section class="tab-content" id="tabProducts">
+        <!-- TAB: 📦 Товары и Каталог -->
+        <section class="tab-content active" id="tabProducts">
             <div class="panel-card">
                 <div class="panel-title">
                     <span>📦 Каталог товаров витрины</span>
@@ -901,6 +802,44 @@
                             <tr><td colspan="8" style="text-align: center; color: rgba(255,255,255,0.4);">Загрузка заказов...</td></tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB: 💬 Онлайн-поддержка (Live-чаты) -->
+        <section class="tab-content" id="tabSupport">
+            <div class="panel-card" style="padding: 20px;">
+                <div class="panel-title" style="padding: 8px 12px;">
+                    <span>💬 Консьерж-служба заботы (Диалоги с клиентами)</span>
+                    <button class="btn-gold-save" onclick="loadSupportChats()" style="font-size: 12px; padding: 6px 16px;">🔄 Обновить чаты</button>
+                </div>
+                <div class="support-split">
+                    <!-- Left: Sessions List -->
+                    <div class="support-sidebar" id="supportSessionsList">
+                        <div style="padding: 24px; text-align: center; color: rgba(255,255,255,0.4); font-size: 13px;">Загрузка диалогов...</div>
+                    </div>
+
+                    <!-- Right: Chat Messages Pane -->
+                    <div class="support-chat-pane">
+                        <div class="chat-pane-header">
+                            <div>
+                                <strong id="currentChatClientName">Выберите диалог слева</strong>
+                                <span id="currentChatSessionId" style="font-size: 11px; color: rgba(255,255,255,0.4); margin-left: 8px;"></span>
+                            </div>
+                            <div id="currentChatPhone" style="font-size: 12px; color: var(--admin-gold);"></div>
+                        </div>
+
+                        <div class="chat-pane-messages" id="supportMessagesContainer">
+                            <div style="text-align: center; margin: auto; color: rgba(255,255,255,0.4); font-size: 13px;">
+                                Нажмите на любой чат из списка слева для просмотра сообщений и ответа покупателю.
+                            </div>
+                        </div>
+
+                        <form class="chat-pane-input-bar" onsubmit="sendSupportReply(event)">
+                            <textarea id="replyTextInput" class="chat-input" rows="2" placeholder="Напишите ответ покупателю как Консьерж MODEVA..."></textarea>
+                            <button type="submit" class="chat-send-btn">Отправить</button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </section>
@@ -1067,7 +1006,9 @@
                     document.getElementById('statOrders').textContent = s.total_orders;
                     document.getElementById('statProducts').textContent = s.total_products;
                     document.getElementById('statClients').textContent = s.total_clients;
-                    document.getElementById('statDeliveryStage').textContent = s.delivery_stage_name;
+                    if (document.getElementById('statDeliveryStage')) {
+                        document.getElementById('statDeliveryStage').textContent = s.delivery_stage_name;
+                    }
                     highlightStageUI(s.delivery_stage);
                 }
             } catch(e) {}

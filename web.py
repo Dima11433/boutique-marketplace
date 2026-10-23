@@ -367,25 +367,9 @@ async def api_action_log(data: ActionLogRequest):
 
 # --- 🚚 3D Interactive Delivery Tracking Endpoints ---
 
-@app.get("/tracking", response_class=HTMLResponse)
-async def tracking_page(request: Request, order: Optional[str] = "GLOBAL", ref: Optional[str] = None):
-    order_num = (order or "GLOBAL").strip().upper()
-    stage_data = await db.get_delivery_stage(order_num)
-    settings = await db.get_site_settings()
-
-    return templates.TemplateResponse(
-        request=request,
-        name="tracking.html",
-        context={
-            "order_number": order_num,
-            "stage_data": stage_data,
-            "current_stage": stage_data.get("current_stage", 1),
-            "support_username": settings.get("support_username", config.SUPPORT_USERNAME),
-            "site_name": settings.get("site_name", "MODEVA"),
-            "site_domain": settings.get("site_domain", config.DOMAINS[0]),
-            "ref": ref or ""
-        }
-    )
+@app.get("/tracking")
+async def tracking_page():
+    return RedirectResponse(url="/", status_code=302)
 
 
 @app.get("/api/delivery-stage")

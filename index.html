@@ -28,16 +28,7 @@
         <div class="container header-container">
             <a href="index.html" class="brand-logo">MODEVA</a>
             
-                <a href="tracking.html" class="btn btn-outline-sm tracking-header-btn" title="Интерактивный 3D-трекинг доставки">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 4px;">
-                        <rect x="1" y="3" width="15" height="13"></rect>
-                        <polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon>
-                        <circle cx="5.5" cy="18.5" r="2.5"></circle>
-                        <circle cx="18.5" cy="18.5" r="2.5"></circle>
-                    </svg>
-                    Трекинг 3D
-                </a>
-
+            <div class="header-actions">
                 <button type="button" class="btn btn-outline-sm support-header-btn" onclick="openModevaSupport()" title="Онлайн-поддержка на сайте 24/7">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 4px;">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -86,36 +77,6 @@
                     <div class="hero-keys-graphic" id="hero3DContainer" title="Интерактивный 3D-символ MODEVA (подвигайте курсором)">
                         <canvas id="hero3DCanvas"></canvas>
                         <div class="hero-3d-badge">✦ 3D MODEVA GOLD</div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- 🚚 Live 3D Delivery Tracking Showcase Banner on Homepage -->
-            <section class="tracking-showcase-section">
-                <div class="tracking-showcase-card">
-                    <div class="showcase-info">
-                        <div class="showcase-pill">✦ СПУТНИКОВЫЙ 3D-ТРЕКИНГ MODEVA</div>
-                        <h2 class="showcase-heading">Интерактивная карта перемещения заказа</h2>
-                        <p class="showcase-sub">
-                            Следите в реальном времени за подготовкой, опломбировкой и доставкой посылки персональным курьером в 3D.
-                        </p>
-                        <div class="showcase-btn-row">
-                            <a href="tracking.html" class="btn btn-gold-tracking">
-                                🚚 Открыть 3D-схему доставки
-                            </a>
-                            <button type="button" class="btn btn-outline-tracking" onclick="openModevaSupport('Здравствуйте! Подскажите статус доставки моего заказа.')">
-                                💬 Консьерж-поддержка
-                            </button>
-                        </div>
-                    </div>
-                    <div class="showcase-map-teaser" onclick="window.location.href='tracking.html'">
-                        <div class="teaser-van-icon">🚚</div>
-                        <div class="teaser-stage-badge">
-                            <span class="live-pulse-dot"></span>
-                            <span>LIVE GPS 3D</span>
-                        </div>
-                        <div style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 2px;">MODEVA Courier Route</div>
-                        <span class="teaser-click-hint">Открыть сцену ➔</span>
                     </div>
                 </div>
             </section>
@@ -279,13 +240,13 @@
                 <div class="success-icon">✓</div>
                 <h3 class="modal-title">Заказ успешно оформлен!</h3>
                 <div class="success-details-card">
-                    <p>Менеджер бутика уже приступил к оформлению доставки.</p>
-                    <p>Вы можете наблюдать за перемещением заказа в интерактивной 3D-схеме.</p>
+                    <p>Менеджер бутика уже приступил к обработке вашего заказа.</p>
+                    <p>Персональный консьерж свяжется с вами для согласования удобного времени доставки.</p>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 16px;">
-                    <a id="successTrackBtn" href="tracking.html" class="btn btn-dark" style="background: linear-gradient(135deg, #d4af37, #aa820a); color: #0b0c10; font-weight: 700;">
-                        🚚 Отследить доставку в 3D
-                    </a>
+                    <button class="btn btn-dark" style="background: linear-gradient(135deg, #d4af37, #aa820a); color: #0b0c10; font-weight: 700;" onclick="closeModal('successModal'); openModevaSupport('Здравствуйте! Я только что оформил заказ.');">
+                        💬 Написать консьержу
+                    </button>
                     <button class="btn btn-outline" onclick="closeModal('successModal')">Продолжить покупки</button>
                 </div>
             </div>
